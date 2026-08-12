@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# DOMAIN ALINDIKTAN SONRA asagidaki satiri acin ve adresi guncelleyin:
+# Sitemap: https://ALANADINIZ.com/sitemap.xml
