@@ -14,17 +14,18 @@ app.js       Mobil menü, aktif menü takibi, hero video döngüsü
        Ana sayfa videoları (bkz. OKUBENI-video.md)
 netlify.toml        Güvenlik başlıkları ve önbellek ayarları
 robots.txt          Arama motoru izinleri
+sitemap.xml         Arama motorları için sayfa listesi
 ```
 
 ## Yayına alma
 
 GitHub deposuna push → Netlify otomatik yayınlar. Ortalama 30 saniye.
 
-## Domain alındıktan sonra yapılacaklar
+## Yayın durumu
 
-1. `index.html` içindeki `ALANADINIZ.com` geçen 3 satırı gerçek adresle değiştir
-2. `robots.txt` içindeki Sitemap satırını aç ve güncelle
-3. Netlify panelinden "Domain management" → alan adını bağla
+- Site: https://maquastech.com (Netlify, HTTPS otomatik)
+- GitHub deposu: maquastech/maquastech-website
+- Mail: Zoho Mail, info@maquastech.com
 
 ## İletişim formu
 
