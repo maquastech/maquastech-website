@@ -1,4 +1,5 @@
 User-agent: *
 Allow: /
+Disallow: /takip.html
 
 Sitemap: https://maquastech.com/sitemap.xml

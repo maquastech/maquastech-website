@@ -25,3 +25,14 @@
   for = "/*.mp4"
   [headers.values]
     Cache-Control = "public, max-age=31536000"
+
+# Servis calisani her zaman taze cekilsin
+[[headers]]
+  for = "/takip-sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/takip.webmanifest"
+  [headers.values]
+    Content-Type = "application/manifest+json"
