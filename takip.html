@@ -236,6 +236,16 @@ main{max-width:1100px;margin:0 auto;padding:22px 16px 80px}
   .takvim-duzen{gap:14px}
 }
 @media(min-width:701px){ .alt-cubuk{display:none} }
+
+.belge-liste{border:1px solid var(--gri2);margin-bottom:8px}
+.belge-satir{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:10px 12px;border-bottom:1px solid var(--gri1)}
+.belge-satir:last-child{border-bottom:0}
+.belge-satir a{display:flex;align-items:baseline;gap:8px;text-decoration:none;color:var(--siyah);min-width:0}
+.belge-ad{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.belge-boyut{font-size:12px;color:var(--gri3);flex:none}
+.belge-sil{color:var(--kirmizi);font-weight:600;font-size:13px;flex:none}
+.depo-uyari{background:#fff7ed;border-left:4px solid #ea580c;padding:10px 14px;font-size:13px;margin-bottom:14px}
 </style>
 </head>
 <body>
@@ -284,12 +294,19 @@ function para(n){ return (Number(n)||0).toLocaleString("tr-TR",{maximumFractionD
 function kacir(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){
   return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]; }); }
 
-/* ÇEKİRDEK: sipariş tarihi + verilen gün = teslim edilmesi gereken gün */
+/* ÇEKİRDEK: teslim tarihi doğrudan girilir. (Eski kayıtlarda gün sayısı varsa ondan hesaplanır.) */
 function hedefGun(is){
+  if(is.teslimHedefi) return is.teslimHedefi;
   var b=tarihe(is.siparisTarihi), g=Number(is.gunSayisi);
   if(!b || !g || g<1) return null;
   var d=new Date(b); d.setDate(d.getDate()+g);
   return anahtarla(d);
+}
+/* sipariş ile teslim hedefi arasındaki gün sayısı */
+function sureGun(is){
+  var b=tarihe(is.siparisTarihi), h=tarihe(hedefGun(is));
+  if(!b||!h) return null;
+  return Math.round((h-b)/86400000);
 }
 function kalanGun(is){
   var h=hedefGun(is); if(!h) return null;
@@ -357,7 +374,7 @@ function uyariHTML(){
   }).sort(function(a,b){ return kalanGun(a)-kalanGun(b); });
   if(!acil.length) return "";
   var gec=acil.filter(function(i){ return kalanGun(i)<0; });
-  var adlar=acil.slice(0,3).map(function(i){ return i.maquasKod||i.firma; }).filter(Boolean).join(", ");
+  var adlar=acil.slice(0,3).map(function(i){ return i.maquasKod||takvimEtiketi(i); }).filter(Boolean).join(", ");
   return '<div class="uyari '+(gec.length?"uyari-kirmizi":"uyari-sari")+'"><div class="sarma">' +
     '<strong>'+(gec.length? gec.length+" işin teslim günü geçti." : acil.length+" işin teslim günü 3 gün içinde.")+'</strong> ' +
     '<span>'+kacir(adlar)+(acil.length>3?" ve "+(acil.length-3)+" tane daha":"")+'</span></div></div>';
@@ -371,6 +388,10 @@ function sekmelerHTML(){
 }
 
 /* ---------- takvim: sadece teslim günleri işaretli ---------- */
+
+function takvimEtiketi(is){
+  return kullanici.rol==="admin" ? (is.firma||is.maquasKod||"İş") : (is.maquasKod||"İş");
+}
 
 function takvimHaritasi(){
   var h={};
@@ -397,11 +418,11 @@ function takvimHTML(){
     var isaretler="", yer=2, atlanan=0;
 
     kutu.teslim.forEach(function(is){
-      if(yer>0){ isaretler+='<div class="isaret '+durum(is)+'">'+kacir(is.firma||is.maquasKod||"İş")+'</div>'; yer--; }
+      if(yer>0){ isaretler+='<div class="isaret '+durum(is)+'">'+kacir(takvimEtiketi(is))+'</div>'; yer--; }
       else atlanan++;
     });
     kutu.siparis.forEach(function(is){
-      if(yer>0){ isaretler+='<div class="isaret siparis">'+kacir(is.firma||is.maquasKod||"İş")+'</div>'; yer--; }
+      if(yer>0){ isaretler+='<div class="isaret siparis">'+kacir(takvimEtiketi(is))+'</div>'; yer--; }
       else atlanan++;
     });
     if(atlanan>0) isaretler+='<div class="fazla">+'+atlanan+'</div>';
@@ -453,6 +474,8 @@ function takvimHTML(){
 
 function isSatirHTML(is){
   var d=durum(is), k=kalanGun(is), hedef=hedefGun(is), gec=gecikmeGun(is);
+  var yonetici=kullanici.rol==="admin";
+  var ustSatir = yonetici ? (is.firma||"Müşteri girilmedi") : (is.malzemeCinsi||"");
 
   var sag="";
   if(is.teslimEdildi){
@@ -462,10 +485,11 @@ function isSatirHTML(is){
       (k<0? Math.abs(k)+" gün geçti" : k===0? "Bugün teslim" : k+" gün kaldı")+'</div>';
   }
 
+  var sure=sureGun(is);
   var cizgi='<div class="zaman-cizgi">' +
     '<span>Sipariş: <b>'+tarihYaz(is.siparisTarihi)+'</b></span>' +
-    (is.gunSayisi?'<span>Süre: <b>'+is.gunSayisi+' gün</b></span>':'') +
     (hedef?'<span>Teslim günü: <b>'+tarihYaz(hedef)+'</b></span>':'') +
+    (sure!==null?'<span>Süre: <b>'+sure+' gün</b></span>':'') +
   '</div>';
 
   var teslimNotu="";
@@ -482,7 +506,7 @@ function isSatirHTML(is){
   return '<button class="is-satir '+d+'" onclick="isAc(\''+is.id+'\')">' +
     '<div class="is-ust"><div>' +
       '<div class="is-kod">'+kacir(is.maquasKod||"Kodsuz")+'</div>' +
-      '<div class="is-firma">'+kacir(is.firma||"Firma girilmedi")+'</div></div>' +
+      '<div class="is-firma">'+kacir(ustSatir)+'</div></div>' +
       '<div class="is-sag"><div class="is-adet">'+(is.adet?is.adet+" adet":"")+'</div>'+sag+'</div>' +
     '</div>'+cizgi+teslimNotu+
     (fiyat?'<div class="rozetler">'+fiyat+'</div>':'')+
@@ -491,6 +515,16 @@ function isSatirHTML(is){
 
 /* ---------- liste ---------- */
 
+function depoUyarisi(){
+  try{
+    var boy=JSON.stringify(veri).length;
+    if(boy < 3200000) return "";
+    return '<div class="depo-uyari"><strong>Depolama doluyor.</strong> ' +
+      'Yaklaşık '+boyutYaz(boy)+' kullanılıyor, sınır 5 MB civarında. ' +
+      'Eski işlerin belge ve fotoğraflarını silmen gerekebilir.</div>';
+  }catch(e){ return ""; }
+}
+
 function listeHTML(){
   var l=veri.isler.slice();
   if(listeFiltre==="acik") l=l.filter(function(i){ return !i.teslimEdildi; });
@@ -498,14 +532,18 @@ function listeHTML(){
   else if(listeFiltre==="teslim") l=l.filter(function(i){ return i.teslimEdildi; });
 
   var a=listeArama.trim().toLowerCase();
-  if(a) l=l.filter(function(i){
-    return [i.maquasKod,i.musteriKod,i.firma,i.malzemeCinsi,i.not].filter(Boolean)
-      .some(function(x){ return String(x).toLowerCase().indexOf(a)>=0; });
-  });
+  if(a){
+    var yonetici=kullanici.rol==="admin";
+    l=l.filter(function(i){
+      var alanlar = yonetici ? [i.maquasKod,i.musteriKod,i.firma,i.malzemeCinsi,i.not]
+                             : [i.maquasKod,i.malzemeCinsi,i.not];
+      return alanlar.filter(Boolean).some(function(x){ return String(x).toLowerCase().indexOf(a)>=0; });
+    });
+  }
   l.sort(function(x,y){ return (hedefGun(x)||"9999").localeCompare(hedefGun(y)||"9999"); });
 
   var f=[["acik","Açık işler"],["gecikmis","Günü geçmiş"],["teslim","Teslim edilmiş"],["hepsi","Hepsi"]];
-  var html='<div class="arac-cubugu">' +
+  var html=depoUyarisi() + '<div class="arac-cubugu">' +
     '<input id="arama-kutu" placeholder="Parça kodu, firma veya malzeme ara" value="'+kacir(listeArama)+'" oninput="aramaYaz(this.value)">' +
     '<button class="btn" onclick="yeniIs()">Yeni iş emri</button></div>' +
     '<div class="filtreler">'+f.map(function(x){
@@ -587,6 +625,28 @@ function kisilerHTML(){
 
 /* ---------- form ---------- */
 
+function belgelerHTML(f){
+  var liste=(f.belgeler||[]).map(function(b,i){
+    return '<div class="belge-satir">' +
+      '<a href="'+b.veri+'" download="'+kacir(b.ad)+'" onclick="event.stopPropagation()">' +
+        '<span class="belge-ad">'+kacir(b.ad)+'</span>' +
+        '<span class="belge-boyut">'+boyutYaz(b.boyut)+'</span></a>' +
+      '<button class="belge-sil" onclick="belgeSil('+i+')">Sil</button></div>';
+  }).join("");
+  var toplam=(f.belgeler||[]).reduce(function(t,b){ return t+b.boyut; },0);
+  return '<div><label>Data — teknik resim ve belgeler</label>' +
+    (liste? '<div class="belge-liste">'+liste+'</div>' : '') +
+    '<button class="foto-alan" onclick="document.getElementById(\'belge-girdi\').click()">Belge ekle</button>' +
+    '<input id="belge-girdi" type="file" multiple class="gizli" onchange="belgeSec(this)">' +
+    '<div class="ipucu">PDF, DWG, Excel, resim… Dosya başına en fazla 1 MB.' +
+      (toplam? ' Şu an '+boyutYaz(toplam)+' kullanılıyor.' : '') + '</div></div>';
+}
+
+function boyutYaz(b){
+  if(!b) return "";
+  return b<1024 ? b+" B" : b<1048576 ? Math.round(b/1024)+" KB" : (b/1048576).toFixed(1)+" MB";
+}
+
 function formHTML(){
   var f=acikForm, yeni=!f.id, yonetici=kullanici.rol==="admin";
   function alan(id,etiket,tip,deger,ipucu){
@@ -595,12 +655,12 @@ function formHTML(){
       (ipucu?'<div class="ipucu">'+ipucu+'</div>':'')+'</div>';
   }
 
-  var hedef=hedefGun(f);
+  var hedef=hedefGun(f), sure=sureGun(f);
   var serit = hedef
     ? '<div class="hedef-serit"><div class="hedef-alt">Teslim edilmesi gereken gün</div>' +
       '<div class="hedef-tarih">'+tarihYaz(hedef)+'</div>' +
-      '<div class="hedef-alt">'+tarihYaz(f.siparisTarihi)+' tarihinden '+f.gunSayisi+' gün sonra</div></div>'
-    : '<div class="hedef-serit"><div class="hedef-alt">Sipariş tarihi ve gün sayısını gir, teslim günü kendiliğinden hesaplanır.</div></div>';
+      (sure!==null?'<div class="hedef-alt">Sipariş tarihinden <strong>'+sure+' gün</strong> sonra</div>':'')+'</div>'
+    : '<div class="hedef-serit"><div class="hedef-alt">Sipariş ve teslim tarihini gir, kaç gün olduğunu hesaplayayım.</div></div>';
 
   var teslimKutu='<div class="teslim-kutu">' +
     '<input type="checkbox" id="f-teslimEdildi"'+(f.teslimEdildi?" checked":"")+' onchange="teslimDegis(this.checked)">' +
@@ -625,17 +685,18 @@ function formHTML(){
     '<div class="form-ic">' +
       '<div class="ikili">' +
         alan("f-siparisTarihi","Sipariş tarihi","date",f.siparisTarihi) +
-        alan("f-gunSayisi","Kaç günde teslim edilecek","number",f.gunSayisi,"Örn. 20 yazarsan sipariş tarihinden 20 gün sonrası") +
+        alan("f-teslimHedefi","Teslim tarihi","date",hedefGun(f),"Parçanın teslim edilmesi gereken gün") +
       '</div>' + serit + teslimKutu +
       '<div class="ikili">' +
         alan("f-maquasKod","MAQUAS parça kodu","text",f.maquasKod, yeni?"Boş bırakırsan otomatik verilir":"") +
-        alan("f-musteriKod","Müşteri parça kodu","text",f.musteriKod) +
-        alan("f-firma","Firma adı","text",f.firma) +
+        (yonetici ? alan("f-musteriKod","Müşteri parça kodu","text",f.musteriKod) : "") +
+        (yonetici ? alan("f-firma","Müşteri adı","text",f.firma) : "") +
         alan("f-adet","Sipariş adedi","number",f.adet) +
-        alan("f-malzemeCinsi","Malzeme cinsi","text",f.malzemeCinsi) +
       '</div>' + finans +
       '<div><label>Parça fotoğrafı</label>'+foto+
         '<input id="foto-girdi" type="file" accept="image/*" class="gizli" onchange="fotoSec(this)"></div>' +
+      belgelerHTML(f) +
+      '<div class="ikili">' + alan("f-malzemeCinsi","Malzeme cinsi","text",f.malzemeCinsi) + '</div>' +
       '<div><label for="f-not">Not</label><textarea id="f-not" rows="3" oninput="formYaz(\'f-not\',this.value)">'+kacir(f.not)+'</textarea></div>' +
     '</div><div class="form-alt">' +
       '<button class="btn" onclick="isKaydet()">Kaydet</button>' +
@@ -667,8 +728,8 @@ function aramaYaz(v){
 
 function yeniIs(){
   acikForm={ maquasKod:"",musteriKod:"",firma:"",adet:"",
-    siparisTarihi:bugunAnahtar(), gunSayisi:"", teslimEdildi:false, teslimTarihi:"",
-    malzemeCinsi:"",malzemeUcreti:"",satisFiyati:"",not:"",foto:"" };
+    siparisTarihi:bugunAnahtar(), teslimHedefi:"", teslimEdildi:false, teslimTarihi:"",
+    malzemeCinsi:"",malzemeUcreti:"",satisFiyati:"",not:"",foto:"",belgeler:[] };
   ciz();
 }
 function isAc(id){
@@ -678,9 +739,9 @@ function isAc(id){
 function formKapat(){ acikForm=null; ciz(); }
 function formYaz(id,deger){
   var k=id.replace("f-","");
-  acikForm[k]=(k==="adet"||k==="gunSayisi"||k==="malzemeUcreti"||k==="satisFiyati")
+  acikForm[k]=(k==="adet"||k==="malzemeUcreti"||k==="satisFiyati")
     ? (deger===""?"":Number(deger)) : deger;
-  if(k==="siparisTarihi"||k==="gunSayisi"||k==="adet"||k==="satisFiyati"||k==="malzemeUcreti") ciz();
+  if(k==="siparisTarihi"||k==="teslimHedefi"||k==="adet"||k==="satisFiyati"||k==="malzemeUcreti") ciz();
 }
 function teslimDegis(secili){
   acikForm.teslimEdildi=secili;
@@ -704,9 +765,37 @@ function fotoSec(girdi){
   };
   o.readAsDataURL(d);
 }
+function belgeSec(girdi){
+  var dosyalar=girdi.files; if(!dosyalar || !dosyalar.length) return;
+  var kalan=dosyalar.length;
+  acikForm.belgeler=acikForm.belgeler||[];
+  for(var i=0;i<dosyalar.length;i++){
+    (function(d){
+      if(d.size>1048576){
+        alert('"'+d.name+'" 1 MB sınırını aşıyor ('+boyutYaz(d.size)+'). Sıkıştırıp tekrar dene.');
+        if(--kalan===0) ciz();
+        return;
+      }
+      var o=new FileReader();
+      o.onload=function(e){
+        acikForm.belgeler.push({ad:d.name, boyut:d.size, veri:e.target.result});
+        if(--kalan===0) ciz();
+      };
+      o.onerror=function(){ if(--kalan===0) ciz(); };
+      o.readAsDataURL(d);
+    })(dosyalar[i]);
+  }
+}
+function belgeSil(i){
+  if(!acikForm.belgeler) return;
+  acikForm.belgeler.splice(i,1);
+  ciz();
+}
+
 function isKaydet(){
   var f=acikForm;
-  if(!f.siparisTarihi || !f.gunSayisi){ alert("Sipariş tarihi ve gün sayısı gerekli."); return; }
+  if(!f.siparisTarihi || !f.teslimHedefi){ alert("Sipariş tarihi ve teslim tarihi gerekli."); return; }
+  if(tarihe(f.teslimHedefi) < tarihe(f.siparisTarihi)){ alert("Teslim tarihi, sipariş tarihinden önce olamaz."); return; }
   if(!f.id){
     veri.sayac++;
     f.id="is"+Date.now();
