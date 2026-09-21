@@ -229,6 +229,72 @@ tfoot td{font-weight:800;border-top:2px solid var(--gri2)}
 .bildirim.yeni{background:#fffbeb}
 .bildirim small{display:block;color:var(--gri3);font-size:12px}
 
+
+/* ============ takvim — iPhone düzeni ============ */
+.it{background:#fff;padding:18px 18px 10px;user-select:none;-webkit-user-select:none}
+.it-ust{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.it-baslik{margin:0;font-size:30px;font-weight:800;letter-spacing:-.02em;line-height:1.1}
+.it-yil{color:var(--kirmizi);font-weight:700}
+.it-dugmeler{display:flex;align-items:center;gap:4px}
+.it-bugun{color:var(--kirmizi);font-weight:600;font-size:15px;padding:6px 10px}
+.it-ok{width:40px;height:40px;font-size:28px;line-height:1;color:var(--kirmizi);border-radius:50%}
+.it-ok:hover,.it-bugun:hover{background:var(--gri1)}
+.it-gunler{display:grid;grid-template-columns:repeat(7,1fr);padding-bottom:8px}
+.it-gunler span{text-align:center;font-size:12px;font-weight:600;color:var(--gri3);text-transform:uppercase;letter-spacing:.04em}
+.it-gunler span.hafta-sonu{color:#c4bfba}
+.it-izgara{border-top:1px solid var(--gri2)}
+.it-hafta{display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--gri2)}
+.it-hucre{min-height:112px;padding:8px 4px 6px;display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center;min-width:0}
+.it-hucre:not(.it-bos):hover .it-no{background:var(--gri1)}
+.it-no{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:500;transition:background .15s}
+.it-hucre.hafta-sonu .it-no{color:var(--gri3)}
+.it-hucre.bayram .it-no{color:var(--kirmizi);font-weight:700}
+.it-hucre.secili .it-no{background:var(--siyah)!important;color:#fff!important;font-weight:700}
+.it-hucre.bugun .it-no{color:var(--kirmizi);font-weight:800}
+.it-hucre.bugun.secili .it-no{background:var(--kirmizi)!important;color:#fff!important}
+.it-noktalar{display:none;gap:4px;justify-content:center}
+.it-d{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--gri3)}
+.it-d.gecikmis{background:var(--kirmizi)}
+.it-d.yakin{background:#eab308}
+.it-d.normal{background:#78716c}
+.it-d.kapali{background:var(--yesil)}
+.it-d.iptal{background:transparent;border:1.5px solid var(--gri3)}
+.it-d.siparis{background:transparent;border:1.5px solid #78716c}
+.it-etiketler{display:flex;flex-direction:column;gap:3px;width:100%;overflow:hidden}
+.it-e{display:block;font-size:11px;font-weight:600;padding:2px 6px;border-radius:4px;text-align:left;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.it-e.gecikmis{background:#fee2e2;color:#991b1b}
+.it-e.yakin{background:#fef3c7;color:#854d0e}
+.it-e.normal{background:#f5f5f4;color:#44403c}
+.it-e.kapali{background:#d1fae5;color:#065f46}
+.it-e.iptal{color:var(--gri3);text-decoration:line-through}
+.it-e.siparis{background:transparent;color:#78716c;border:1px dashed #d6d3d1}
+.it-etiketler .it-e:nth-child(n+4){display:none}
+.it-aciklama{display:flex;flex-wrap:wrap;gap:6px 16px;padding:12px 2px 4px;font-size:12px;color:var(--gri4)}
+.it-aciklama span{display:flex;align-items:center;gap:6px}
+
+.it-gun{background:#fff;margin-top:14px;padding:16px 18px 18px}
+.it-gun-ust{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
+.it-gun-baslik{font-size:22px;font-weight:800;line-height:1.1}
+.it-gun-alt{font-size:14px;color:var(--gri3)}
+.it-ekle{width:44px;height:44px;border-radius:50%;background:var(--kirmizi);color:#fff;font-size:28px;line-height:1;flex:none}
+.it-ekle:hover{background:#b91c1c}
+.it-bos-gun{padding:26px 0;text-align:center;color:var(--gri3)}
+.it-gun .grup-etiket:first-child{margin-top:0}
+
+@media(max-width:700px){
+  /* telefonda kenardan kenara */
+  .it{margin:-14px -12px 0;padding:14px 8px 8px}
+  .it-ust{padding:0 8px}
+  .it-baslik{font-size:28px}
+  .it-hucre{min-height:58px;padding:6px 0 4px;gap:4px}
+  .it-no{width:36px;height:36px;font-size:18px}
+  .it-noktalar{display:flex}
+  .it-etiketler{display:none}
+  .it-aciklama{padding:10px 8px 2px;font-size:11px;gap:4px 12px}
+  .it-gun{margin:10px -12px 0;padding:16px 14px}
+}
+
 /* alt cubuk (telefon) */
 .alt-cubuk{display:none}
 @media(max-width:700px){
@@ -498,31 +564,75 @@ function takvimHaritasi(){
   });
   return h;
 }
+var GUN_ADI=["Pazar","Pazartesi","Salı","Çarşamba","Perşembe","Cuma","Cumartesi"];
 function takvimHTML(){
   var h=takvimHaritasi(), y=gosterAy.y, m=gosterAy.m;
-  var kay=(new Date(y,m,1).getDay()+6)%7, gs=new Date(y,m+1,0).getDate(), hucre="";
-  for(var i=0;i<kay;i++) hucre+='<div class="hucre bos-h"></div>';
+  var kay=(new Date(y,m,1).getDay()+6)%7, gs=new Date(y,m+1,0).getDate();
+  var hucreler=[], i;
+  for(i=0;i<kay;i++) hucreler.push('<div class="it-hucre it-bos"></div>');
   for(var g=1;g<=gs;g++){
-    var ak=y+"-"+ikiHane(m+1)+"-"+ikiHane(g), kt=h[ak]||{siparis:[],teslim:[]}, yer=2, fazla=0, isr="";
-    kt.teslim.forEach(function(is){ if(yer>0){ isr+='<div class="isaret '+durum(is)+'">'+kacir(etiket(is))+'</div>'; yer--; } else fazla++; });
-    kt.siparis.forEach(function(is){ if(yer>0){ isr+='<div class="isaret siparis">'+kacir(etiket(is))+'</div>'; yer--; } else fazla++; });
-    if(fazla) isr+='<div class="fazla">+'+fazla+'</div>';
-    var bay=BAYRAMLAR[ak]||BAYRAMLAR[ak.slice(5)];
-    hucre+='<button class="hucre'+(ak===secilenGun?" secili":"")+(ak===bugun()?" bugun":"")+(bay?" bayram":"")+'" onclick="gunSec(\''+ak+'\')"><span class="hucre-no">'+g+'</span>'+(isr?'<div class="noktalar">'+isr+'</div>':'')+'</button>';
+    var ak=y+"-"+ikiHane(m+1)+"-"+ikiHane(g), kt=h[ak]||{siparis:[],teslim:[]};
+    var hs=(kay+g-1)%7>=5, bay=BAYRAMLAR[ak]||BAYRAMLAR[ak.slice(5)];
+    var noktalar="", etiketler="", n=0;
+    kt.teslim.forEach(function(is){
+      if(n<3) noktalar+='<i class="it-d '+durum(is)+'"></i>'; n++;
+      etiketler+='<span class="it-e '+durum(is)+'">'+kacir(etiket(is))+'</span>';
+    });
+    kt.siparis.forEach(function(is){
+      if(n<3) noktalar+='<i class="it-d siparis"></i>'; n++;
+      etiketler+='<span class="it-e siparis">'+kacir(etiket(is))+'</span>';
+    });
+    var cls="it-hucre"+(ak===bugun()?" bugun":"")+(ak===secilenGun?" secili":"")+(hs?" hafta-sonu":"")+(bay?" bayram":"");
+    hucreler.push('<button class="'+cls+'" onclick="gunSec(\''+ak+'\')" aria-label="'+g+" "+AYLAR[m]+(n?", "+n+" kayıt":"")+'">'+
+      '<span class="it-no">'+g+'</span>'+
+      (noktalar?'<span class="it-noktalar">'+noktalar+'</span>':'')+
+      (etiketler?'<span class="it-etiketler">'+etiketler+'</span>':'')+'</button>');
   }
-  var sk=h[secilenGun]||{siparis:[],teslim:[]}, yan="";
+  while(hucreler.length%7) hucreler.push('<div class="it-hucre it-bos"></div>');
+
+  var satirlar="";
+  for(i=0;i<hucreler.length;i+=7) satirlar+='<div class="it-hafta">'+hucreler.slice(i,i+7).join("")+'</div>';
+
+  /* seçili günün listesi */
+  var sk=h[secilenGun]||{siparis:[],teslim:[]}, sd=tarihe(secilenGun);
   var sbay=BAYRAMLAR[secilenGun]||BAYRAMLAR[(secilenGun||"").slice(5)];
-  if(sbay) yan+='<div class="bayram-not">'+kacir(sbay)+'</div>';
-  if(sk.teslim.length) yan+='<div class="grup-etiket">Teslim edilecek</div>'+sk.teslim.map(isSatirHTML).join("");
-  if(sk.siparis.length) yan+='<div class="grup-etiket gri">Sipariş alındı</div>'+sk.siparis.map(isSatirHTML).join("");
-  if(!sk.teslim.length && !sk.siparis.length) yan+='<p style="color:#a8a29e">Bu güne kayıt yok.</p>';
-  var oz=[]; if(sk.siparis.length) oz.push(sk.siparis.length+" sipariş alındı"); if(sk.teslim.length) oz.push(sk.teslim.length+" teslim edilecek");
-  return '<div class="takvim-duzen"><section class="kart"><div class="takvim-ust"><button class="ok" onclick="ayDegis(-1)" aria-label="Önceki ay">&lsaquo;</button><h2>'+AYLAR[m]+" "+y+'</h2><button class="ok" onclick="ayDegis(1)" aria-label="Sonraki ay">&rsaquo;</button></div>'+
-    '<div class="gun-bas">'+GUN_BAS.map(function(d){ return "<div>"+d+"</div>"; }).join("")+'</div><div class="gun-izgara">'+hucre+'</div>'+
-    '<div class="aciklama"><span><i class="ornek" style="border:1px dashed #a8a29e;background:#fff"></i> Sipariş alındı</span><span><i class="ornek" style="background:#d71920"></i> Teslim günü geçmiş</span><span><i class="ornek" style="background:#f0c419"></i> Teslime 3 gün</span><span><i class="ornek" style="background:#e7e5e4"></i> İleri tarihli</span><span><i class="ornek" style="background:#d1fae5"></i> Kapandı</span></div></section>'+
-    '<aside class="kart" style="padding:16px"><h3 class="yan-baslik">'+tarihYaz(secilenGun)+'</h3><p class="yan-ozet">'+(oz.length?oz.join(" · "):"Kayıt yok")+'</p>'+yan+
-    (yetkiIsAc()?'<button class="btn btn-tam" style="margin-top:14px" onclick="yeniIs()">Yeni iş emri</button>':'')+'</aside></div>';
+  var liste="";
+  if(sbay) liste+='<div class="bayram-not">'+kacir(sbay)+'</div>';
+  if(sk.teslim.length) liste+='<div class="grup-etiket">Teslim edilecek</div>'+sk.teslim.map(isSatirHTML).join("");
+  if(sk.siparis.length) liste+='<div class="grup-etiket gri">Sipariş alındı</div>'+sk.siparis.map(isSatirHTML).join("");
+  if(!sk.teslim.length&&!sk.siparis.length&&!sbay) liste+='<div class="it-bos-gun">Bu güne kayıt yok</div>';
+
+  var buAy = gosterAy.y===new Date().getFullYear() && gosterAy.m===new Date().getMonth() && secilenGun===bugun();
+
+  return '<section class="it" ontouchstart="kaydirBasla(event)" ontouchend="kaydirBitir(event)">'+
+      '<div class="it-ust">'+
+        '<h2 class="it-baslik"><span class="it-ay">'+AYLAR[m]+'</span> <span class="it-yil">'+y+'</span></h2>'+
+        '<div class="it-dugmeler">'+
+          (buAy?'':'<button class="it-bugun" onclick="bugunGit()">Bugün</button>')+
+          '<button class="it-ok" onclick="ayDegis(-1)" aria-label="Önceki ay">&lsaquo;</button>'+
+          '<button class="it-ok" onclick="ayDegis(1)" aria-label="Sonraki ay">&rsaquo;</button>'+
+        '</div></div>'+
+      '<div class="it-gunler">'+GUN_BAS.map(function(d,j){ return '<span'+(j>=5?' class="hafta-sonu"':'')+'>'+d+'</span>'; }).join("")+'</div>'+
+      '<div class="it-izgara">'+satirlar+'</div>'+
+      '<div class="it-aciklama"><span><i class="it-d gecikmis"></i>Günü geçmiş</span><span><i class="it-d yakin"></i>3 gün kaldı</span><span><i class="it-d normal"></i>İleri tarihli</span><span><i class="it-d kapali"></i>Kapandı</span><span><i class="it-d siparis"></i>Sipariş alındı</span></div>'+
+    '</section>'+
+    '<section class="it-gun">'+
+      '<div class="it-gun-ust"><div><div class="it-gun-baslik">'+(sd?sd.getDate()+" "+AYLAR[sd.getMonth()]:"")+'</div><div class="it-gun-alt">'+(sd?GUN_ADI[sd.getDay()]+(secilenGun===bugun()?" · Bugün":""):"")+'</div></div>'+
+        (yetkiIsAc()?'<button class="it-ekle" onclick="yeniIs()" aria-label="Yeni iş emri">+</button>':'')+'</div>'+
+      liste+
+    '</section>';
 }
+
+/* parmakla kaydırarak ay değiştirme */
+var kaydirX=null, kaydirY=null;
+function kaydirBasla(e){ var t=e.changedTouches[0]; kaydirX=t.clientX; kaydirY=t.clientY; }
+function kaydirBitir(e){
+  if(kaydirX===null) return;
+  var t=e.changedTouches[0], dx=t.clientX-kaydirX, dy=t.clientY-kaydirY;
+  kaydirX=null;
+  if(Math.abs(dx)>60 && Math.abs(dx)>Math.abs(dy)*1.5) ayDegis(dx<0?1:-1);
+}
+function bugunGit(){ var d=new Date(); gosterAy={y:d.getFullYear(),m:d.getMonth()}; secilenGun=bugun(); ciz(); }
 
 /* =====================================================================
    İŞ SATIRI
@@ -980,7 +1090,11 @@ function girisDene(){
 function cikis(){ kullanici=null; acikForm=null; diyalog=null; secilenMusteri=null; ciz(); }
 function sekmeAc(k){ sekme=k; secilenMusteri=null; window.scrollTo(0,0); ciz(); }
 function gunSec(k){ secilenGun=k; ciz(); }
-function ayDegis(y){ var d=new Date(gosterAy.y,gosterAy.m+y,1); gosterAy={y:d.getFullYear(),m:d.getMonth()}; ciz(); }
+function ayDegis(y){
+  var d=new Date(gosterAy.y,gosterAy.m+y,1); gosterAy={y:d.getFullYear(),m:d.getMonth()};
+  var n=new Date(); secilenGun = (d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth())? bugun() : anahtarla(d);
+  ciz();
+}
 function filtreSec(f){ listeFiltre=f; ciz(); }
 function aramaYaz(v){
   listeArama=v;
