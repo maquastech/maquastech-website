@@ -2,7 +2,7 @@
    Uygulama dosyalarini onbellege alir, internet yokken de acilir.
    Surum numarasini degistirirsen tarayici yeni dosyalari ceker. */
 
-var SURUM = "maquas-takip-v4";
+var SURUM = "maquas-takip-v5";
 var DOSYALAR = [
   "/takip.html",
   "/takip.webmanifest",
