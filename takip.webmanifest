@@ -1,12 +1,12 @@
 {
-  "name": "MAQUAS TECHNIC İş Takip",
-  "short_name": "MAQUAS Takip",
+  "name": "Maquas iş takip sistemi",
+  "short_name": "Maquas iş takip sistemi",
   "description": "Sipariş, termin ve teslimat takibi",
   "start_url": "/takip.html",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#111111",
+  "background_color": "#ffffff",
   "theme_color": "#111111",
   "lang": "tr",
   "icons": [

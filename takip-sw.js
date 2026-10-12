@@ -2,10 +2,11 @@
    Uygulama dosyalarini onbellege alir, internet yokken de acilir.
    Surum numarasini degistirirsen tarayici yeni dosyalari ceker. */
 
-var SURUM = "maquas-takip-v5";
+var SURUM = "maquas-takip-v6";
 var DOSYALAR = [
   "/takip.html",
   "/takip.webmanifest",
+  "/simge-180.png",
   "/simge-192.png",
   "/simge-512.png",
   "/simge-maskable.png"
