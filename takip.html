@@ -13,6 +13,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="/simge-180.png">
 <link rel="icon" href="/simge-192.png">
 <title>Maquas iş takip sistemi</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.115.0/dist/umd/supabase.js"></script>
 <style>
 :root{--siyah:#111;--kirmizi:#d71920;--sari:#f0c419;--yesil:#059669;
   --gri1:#f5f5f4;--gri2:#e7e5e4;--gri3:#a8a29e;--gri4:#57534e;}
@@ -417,6 +418,22 @@ tfoot td{font-weight:800;border-top:2px solid var(--gri2)}
 .bk-foto-ekle span{font-size:11px;margin-top:4px}
 .tur-btn.ariza.aktif{background:var(--kirmizi);border-color:var(--kirmizi)}
 
+/* sunucu: eşitleme rozeti, giriş bağlantıları, kullanıcı yönetimi */
+.senk{font-size:11px;font-weight:700;padding:3px 8px;border-radius:10px;white-space:nowrap}
+.senk-gri{background:#3f3f46;color:#e7e5e4}.senk-sari{background:var(--sari);color:#111}.senk-kirmizi{background:var(--kirmizi);color:#fff}
+.giris-baglantilar{display:flex;justify-content:space-between;margin-top:16px;font-size:14px}
+.giris-baglantilar a,.giris-dip a{color:var(--siyah)}
+.giris-durum{text-align:center;padding:30px 0;color:var(--gri4)}
+.donen{width:34px;height:34px;border:3px solid var(--gri2);border-top-color:var(--kirmizi);border-radius:50%;margin:0 auto 12px;animation:don 0.8s linear infinite}
+@keyframes don{to{transform:rotate(360deg)}}
+.kisi-satir{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;text-align:left;padding:12px 16px;border-bottom:1px solid var(--gri1);background:#fff}
+.kisi-satir.bekliyor{background:#fff7ed}
+.kisi-detay{display:flex;flex-direction:column;gap:12px;padding:14px 16px 18px;background:#fafaf9;border-bottom:1px solid var(--gri2)}
+.yetki-liste{flex-direction:column;gap:8px}
+.rol-rozet{flex:none;font-size:11px;font-weight:700;padding:3px 8px;background:var(--gri2);color:var(--gri4);white-space:nowrap;max-width:48%;overflow:hidden;text-overflow:ellipsis}
+.rol-rozet.r-admin{background:#111;color:#fff}.rol-rozet.r-personel{background:#e0f2fe;color:#075985}.rol-rozet.r-musteri{background:#ecfccb;color:#3f6212}.rol-rozet.r-yok{background:#fed7aa;color:#9a3412}
+.rozet-kirmizi{display:inline-block;margin-left:8px;background:var(--kirmizi);color:#fff;font-size:11px;padding:2px 8px;border-radius:10px;vertical-align:middle}
+
 /* alt cubuk (telefon) */
 .alt-cubuk{display:none}
 @media(max-width:700px){
@@ -507,24 +524,14 @@ var stokMusteri=null, stokArama="";
 var secilenMakina=null, makinaSekme="imalat", makinaFiltre="acik", bakimFiltre="hepsi";
 
 function bosVeri(){
-  return {surum:2, kullanicilar:[{id:"u1",ad:"Yönetici",kullaniciAdi:"admin",sifre:"maquas",rol:"admin",yetki:{isAc:true,kapat:true}}],
+  return {surum:2, kullanicilar:[],
     musteriler:[], parcaKartlari:[], isler:[], tahsilatlar:[], ekKalemler:[], stoklar:[], makinalar:[], bakimlar:[], sayac:0, gosterilenBildirim:{}};
 }
 
 /* =====================================================================
    KAYIT / YÜKLEME / GÖÇ
    ===================================================================== */
-function yukle(){
-  var ham=null;
-  try{ ham=localStorage.getItem(ANAHTAR); }catch(e){}
-  veri = ham ? JSON.parse(ham) : bosVeri();
-  goc();
-  copBosalt();
-}
-function kaydet(){
-  try{ localStorage.setItem(ANAHTAR, JSON.stringify(veri)); return true; }
-  catch(e){ alert("Kaydedilemedi. Depolama dolmuş olabilir; eski belge ve fotoğrafları silmeyi dene."); return false; }
-}
+/* Kayıtlar artık ortak veritabanında; yükleme ve kaydetme SUNUCU bölümünde. */
 /* eski sürüm kayıtlarını yeni yapıya taşır */
 function goc(){
   var v=veri;
@@ -542,7 +549,7 @@ function goc(){
     }
     CARI_ALANLAR.forEach(function(a){ if(m[a[0]]==null) m[a[0]]=""; });
   });
-  v.kullanicilar.forEach(function(k){ if(!k.yetki) k.yetki={isAc:k.rol==="admin",kapat:k.rol==="admin"}; });
+  v.kullanicilar=v.kullanicilar||[];
   v.isler.forEach(function(is){
     if(!is.musteriId && is.firma){ is.musteriId=musteriBulYaDaEkle(is.firma).id; }
     if(!is.teslimHedefi && is.siparisTarihi && is.gunSayisi){
@@ -640,6 +647,10 @@ function bildirimleriTopla(){
     else if(k>=0 && k<3) liste.push({id:"tk-"+is.id+"-"+b,tur:"termin",is:is,metin:(is.maquasKod||"İş")+" — teslime "+(k===0?"bugün":k+" gün")+" kaldı"});
     else if(k<0) liste.push({id:"tg-"+is.id,tur:"gecikme",is:is,metin:(is.maquasKod||"İş")+" — teslim günü "+Math.abs(k)+" gün geçti"});
   });
+  if(yonetici()){
+    var bek=(veri.kullanicilar||[]).filter(function(u){ return u.rol==="yok"; });
+    if(bek.length) liste.unshift({id:"onay-"+bek.map(function(u){ return u.id; }).join(""),tur:"onay",metin:bek.length+" kişi hesap onayı bekliyor: "+bek.map(function(u){ return u.ad||u.eposta; }).join(", ")});
+  }
   var bayram=BAYRAMLAR[b]||BAYRAMLAR[b.slice(5)];
   if(bayram) liste.unshift({id:"b-"+b,tur:"bayram",metin:bayram+". MAQUAS TECHNIC ailesi olarak iyi bayramlar dileriz."});
   return liste;
@@ -669,6 +680,7 @@ function ciz(){
   var k=document.getElementById("kok");
   var pd=k.querySelectorAll(".perde"), kayd=[].map.call(pd,function(p){ var m=p.querySelector(".modal"); return [p.scrollTop, m?m.scrollTop:0]; });
   if(!kullanici){ k.innerHTML=girisHTML(); return; }
+  cizimBekliyor=false;
   if(!sekmeler().some(function(x){ return x[0]===sekme; })) sekme="takvim";   /* yetkisiz sekme açılmasın */
   var ic = sekme==="takvim"?takvimHTML(): sekme==="liste"?listeHTML(): sekme==="musteriler"?musterilerHTML(): sekme==="rapor"?raporHTML():
     sekme==="stok"?stokHTML(): sekme==="makinalar"?makinalarHTML(): ayarlarHTML();
@@ -683,24 +695,12 @@ function girisHTML(){
     '<div class="giris-sol">'+
       '<div class="giris-marka">'+LOGO_BEYAZ+'</div>'+
       '<h1>Üretimin her adımı<br>tek ekranda.</h1>'+
-      '<p>Sipariş, termin, teslimat ve cari takibi. MAQUAS TECHNIC iş takip sistemi.</p>'+
+      '<p>Sipariş, termin, teslimat, stok ve makina takibi. Herkes aynı kayıtları anında görür.</p>'+
       '<div class="giris-seritler"><i></i><i></i><i></i></div>'+
     '</div>'+
     '<div class="giris-sag"><div class="giris-kutu">'+
       '<div class="giris-logo">'+LOGO_KOYU+'</div>'+
-      '<h2>İş Takip Sistemi</h2>'+
-      '<p class="giris-alt">Hesabınızla giriş yapın</p>'+
-      '<form onsubmit="event.preventDefault();girisDene()">'+
-        '<label for="g-ad">Kullanıcı adı</label>'+
-        '<input id="g-ad" autocapitalize="none" autocomplete="username" placeholder="kullanıcı adınız">'+
-        '<label for="g-sifre" style="margin-top:14px">Şifre</label>'+
-        '<div class="sifre-kutu"><input id="g-sifre" type="password" autocomplete="current-password" placeholder="••••••••">'+
-          '<button type="button" class="goz" onclick="sifreGoster(this)" aria-label="Şifreyi göster">Göster</button></div>'+
-        '<div id="g-hata" class="hata"></div>'+
-        '<button class="btn btn-tam giris-btn" type="submit">Giriş yap</button>'+
-      '</form>'+
-      '<div class="giris-roller"><span>Yönetici</span><span>Personel</span><span>Müşteri</span></div>'+
-      '<p class="giris-dip">Hesabınız yoksa yöneticinizden kullanıcı açmasını isteyin.</p>'+
+      girisFormHTML()+
     '</div></div></div>';
 }
 function sifreGoster(b){
@@ -712,7 +712,7 @@ function sifreGoster(b){
 function ustHTML(){
   var n=yeniBildirimSayisi();
   return '<header class="ust"><div class="sarma ust-ic"><button class="ust-logo" onclick="sekmeAc(\'takvim\')" aria-label="MAQUAS TECHNIC — takvime dön">'+LOGO_BEYAZ+'</button>'+
-  '<div class="ust-sag"><button class="zil" onclick="bildirimAc()" aria-label="Bildirimler">🔔'+(n?'<span class="zil-sayi">'+n+'</span>':'')+'</button>'+
+  '<div class="ust-sag"><span id="senk-alan">'+senkRozetHTML()+'</span><button class="zil" onclick="bildirimAc()" aria-label="Bildirimler">🔔'+(n?'<span class="zil-sayi">'+n+'</span>':'')+'</button>'+
   '<span class="ust-ad">'+kacir(kullanici.ad)+'</span></div></div></header>';
 }
 function uyariHTML(){
@@ -727,7 +727,8 @@ function uyariHTML(){
 function sekmeler(){
   var s=[["takvim","▦","Takvim"],["liste","☰",musteriRol()?"Siparişlerim":"İşler"]];
   if(yonetici()) s.push(["musteriler","◉","Cariler"]);
-  if(!musteriRol()) s.push(["stok","▤","Stok"],["makinalar","⚒","Makinalar"]);
+  if(yetki("stok")) s.push(["stok","▤","Stok"]);
+  if(yetki("makina")) s.push(["makinalar","⚒","Makinalar"]);
   if(yonetici()) s.push(["rapor","₺","Rapor"]);
   s.push(["ayarlar","⚙","Ayarlar"]);   /* çıkış burada olduğu için herkes görür */
   return s;
@@ -845,7 +846,7 @@ function isSatirHTML(is){
     else dy='<div class="durum-yazi mavi">'+is.teslimatlar.length+'. teslimat yapıldı · '+te+' / '+ad+' adet</div>';
   }
   if(d==="iptal") dy+='<div class="durum-yazi kirmizi">İptal edildi'+(is.iptal&&is.iptal.neden?" — "+kacir(is.iptal.neden):"")+'</div>';
-  var f = (yonetici()&&sayi(is.satisFiyati))? '<div class="fiyat-yazi">'+para(sayi(is.satisFiyati)*ad,is.paraBirimi)+'</div>' : '';
+  var f = (fiyatGorur()&&sayi(is.satisFiyati))? '<div class="fiyat-yazi">'+para(sayi(is.satisFiyati)*ad,is.paraBirimi)+'</div>' : '';
   if(musteriRol() && is.foto) f='<img class="is-foto" src="'+is.foto+'" alt="Parça">';
   if(!musteriRol() && is.makina && makinaAdi(is.makina.id)) dy+='<div class="durum-yazi mk-rozet">⚒ '+kacir(makinaAdi(is.makina.id))+'</div>';
   return '<button class="is-satir '+d+'" onclick="isAc(\''+is.id+'\')"><div class="is-ust"><div><div class="is-kod">'+kacir(is.maquasKod||"Kodsuz")+'</div><div class="is-alt">'+kacir(alt)+'</div></div>'+
@@ -988,7 +989,7 @@ function isFormHTML(){
   if(f.durum==="iptal") banner='<div class="durum-banner iptal">Sipariş iptal edildi'+(f.iptal?" — "+kacir(f.iptal.kim)+", "+zamanYaz(f.iptal.zaman)+(f.iptal.neden?" · "+kacir(f.iptal.neden):""):"")+'</div>';
 
   var finans="";
-  if(adm){
+  if(fiyatGorur()){
     finans='<div class="bolum finans"><div class="bolum-baslik">Finansal bilgiler</div>'+
       '<div class="ikili" style="margin-bottom:12px"><div><label for="a-paraBirimi">Satış para birimi</label><select id="a-paraBirimi" onchange="paraDegis(this.value)"'+(kap?" disabled":"")+'>'+
         ["TL","USD","EUR"].map(function(p){ return '<option'+(pb===p?" selected":"")+'>'+p+'</option>'; }).join("")+'</select></div>'+
@@ -1118,6 +1119,11 @@ function diyalogHTML(){
     ic='<div class="ikili"><div><label for="d-tutar">Tutar (₺)</label><input id="d-tutar" type="text" inputmode="decimal" autocomplete="off"></div><div><label for="d-tarih">Tarih</label><input id="d-tarih" type="date" value="'+bugun()+'"></div></div>'+
       '<div><label for="d-aciklama">Açıklama</label><input id="d-aciklama" type="text" placeholder="Örn. havale, çek, nakit"></div>';
     buton='<button class="btn btn-tam" onclick="tahsilatKaydet()">Tahsilatı kaydet</button>';
+  } else if(d.tur==="sifreDegistir"){
+    baslik="Şifremi değiştir";
+    ic='<div><label for="d-yeni">Yeni şifre</label><input id="d-yeni" type="password" autocomplete="new-password" placeholder="En az 8 karakter"></div>'+
+      '<div><label for="d-yeni2">Yeni şifre (tekrar)</label><input id="d-yeni2" type="password" autocomplete="new-password"></div>';
+    buton='<button class="btn btn-tam" onclick="sifreDegistir()">Şifreyi değiştir</button>';
   } else if(d.tur==="makina"){
     baslik=d.id?"Makina kartı":"Yeni makina kartı";
     ic='<div><label for="d-mad">Makina adı</label><input id="d-mad" value="'+kacir(d.taslak.ad)+'" oninput="diyalog.taslak.ad=this.value" placeholder="Örn. CNC Torna 1"></div>'+
@@ -1374,8 +1380,14 @@ function bakimFotoSec(g){
   var kalan=ds.length;
   ds.forEach(function(d){ fotoKucult(d,1000,.62,function(u){ if(u) t.fotolar.push(u); if(--kalan===0) ciz(); }); });
 }
+function bakimSahibiMi(){
+  if(yonetici()||!diyalog.id) return true;
+  var x=veri.bakimlar.filter(function(y){ return y.id===diyalog.id; })[0];
+  return x && x._olusturan===kullanici.id;
+}
 function bakimKaydet(){
   var t=diyalog.taslak;
+  if(!bakimSahibiMi()){ dHata("Yalnız kendi girdiğin kaydı değiştirebilirsin."); return; }
   if(!t.tur){ dHata("Bakım mı arıza mı, seç."); return; }
   if(!t.tarih){ dHata("Tarih gerekli."); return; }
   if(!String(t.not||"").trim()){ dHata("Yapılan işlemi yaz."); return; }
@@ -1387,6 +1399,7 @@ function bakimKaydet(){
   else if(!diyalog.id) veri.bakimlar.pop();
 }
 function bakimSil(){
+  if(!bakimSahibiMi()){ dHata("Yalnız kendi girdiğin kaydı silebilirsin."); return; }
   if(!confirm("Bu kayıt silinsin mi?")) return;
   veri.bakimlar=veri.bakimlar.filter(function(y){ return y.id!==diyalog.id; });
   if(kaydet()){ diyalog=null; ciz(); }
@@ -1622,16 +1635,10 @@ function raporHTML(){
 function ayarlarHTML(){
   var rolAdi = yonetici()?"Yönetici" : musteriRol()?"Müşteri" : "Personel";
   var hesap='<section class="kart ayar-tam"><div class="tablo-baslik">Hesap</div><div class="form-dikey">'+
-    '<div><div style="font-weight:700">'+kacir(kullanici.ad)+'</div><div style="font-size:13px;color:#a8a29e">'+kacir(kullanici.kullaniciAdi)+' · '+rolAdi+'</div></div>'+
+    '<div><div style="font-weight:700">'+kacir(kullanici.ad)+'</div><div style="font-size:13px;color:#a8a29e">'+kacir(kullanici.eposta||"")+' · '+rolAdi+'</div></div>'+
+    '<button class="btn btn-acik btn-tam" onclick="sifreDegistirAc()">Şifremi değiştir</button>'+
     '<button class="btn btn-kirmizi btn-tam" onclick="cikis()">Çıkış yap</button></div></section>';
   if(!yonetici()) return '<div class="ayar-duzen">'+bildirimAyarHTML()+hesap+'</div>';
-  var k=veri.kullanicilar.map(function(u){
-    var rolAd = u.rol==="admin"?"Yönetici" : u.rol==="musteri"?"Müşteri" : "Personel";
-    return '<div class="satir"><div><div style="font-weight:700">'+kacir(u.ad)+'</div><div style="font-size:13px;color:#a8a29e">'+kacir(u.kullaniciAdi)+' · '+rolAd+
-      (u.rol==="musteri"?' · '+kacir(musteriAdi(u.musteriId)||"kart seçilmemiş"):'')+
-      (u.rol==="calisan"?' · '+(u.yetki.isAc?"iş açabilir":"iş açamaz")+', '+(u.yetki.kapat?"kapatabilir":"kapatamaz"):'')+'</div></div>'+
-      (veri.kullanicilar.length>1&&u.id!==kullanici.id?'<button class="sil-link" onclick="kisiSil(\''+u.id+'\')">Sil</button>':'')+'</div>';
-  }).join("");
   var sil=[];
   veri.isler.forEach(function(x){ if(x.silindi) sil.push({tur:"isler",x:x,ad:"İş emri · "+(x.maquasKod||"")}); });
   veri.musteriler.forEach(function(x){ if(x.silindi) sil.push({tur:"musteriler",x:x,ad:"Müşteri · "+x.ad}); });
@@ -1642,19 +1649,7 @@ function ayarlarHTML(){
     return '<div class="satir"><div><div style="font-weight:600">'+kacir(s.ad)+'</div><div style="font-size:12px;color:#a8a29e">'+kacir(s.x.silindi.kim)+' sildi · '+kalan+' gün sonra kalıcı silinecek</div></div><button class="btn btn-acik btn-kucuk" onclick="geriAl(\''+s.tur+'\',\''+s.x.id+'\')">Geri al</button></div>'; }).join("")
     : '<div class="satir" style="color:#a8a29e">Silinen kayıt yok.</div>';
   return '<div class="ayar-duzen">'+
-    '<section class="kart"><div class="tablo-baslik">Kullanıcılar</div>'+k+'</section>'+
-    '<section class="kart"><div class="tablo-baslik">Yeni kullanıcı</div><div class="form-dikey">'+
-      '<div><label for="k-ad">Ad soyad</label><input id="k-ad"></div><div><label for="k-kad">Kullanıcı adı</label><input id="k-kad" autocapitalize="none"></div>'+
-      '<div><label for="k-sifre">Şifre</label><input id="k-sifre"></div>'+
-      '<div><label for="k-rol">Rol</label><select id="k-rol" onchange="rolDegis(this.value)">'+
-        '<option value="calisan">Personel — müşteri ve finans görmez</option>'+
-        '<option value="admin">Yönetici — her şeyi görür</option>'+
-        '<option value="musteri">Müşteri — sadece kendi siparişlerini görür</option></select></div>'+
-      '<div id="k-yetki" style="display:flex;flex-direction:column;gap:8px"><label class="kutucuk"><input type="checkbox" id="k-isac"> Yeni iş emri açabilir</label><label class="kutucuk"><input type="checkbox" id="k-kapat"> Teslimat girebilir ve sipariş kapatabilir</label></div>'+
-      '<div id="k-musteri" style="display:none"><label for="k-mid">Hangi müşteri kartı</label><select id="k-mid">'+
-        canli(veri.musteriler).filter(function(m){ return (m.tur||"musteri")==="musteri"; }).map(function(m){ return '<option value="'+m.id+'">'+kacir(m.ad)+'</option>'; }).join("")+
-        '</select><div class="ipucu">Bu kullanıcı yalnızca seçilen müşterinin siparişlerini görür; fiyat ve maliyet göremez.</div></div>'+
-      '<button class="btn" onclick="kisiEkle()">Kullanıcı ekle</button></div></section>'+
+    kullanicilarHTML()+
     '<section class="kart"><div class="tablo-baslik">Silinenler · '+COP_GUN+' gün saklanır</div>'+silHTML+'</section>'+
     bildirimAyarHTML()+yedekAyarHTML()+hesap+'</div>';
 }
@@ -1665,16 +1660,10 @@ function bildirimAyarHTML(){
       (izin==="granted"?'<p style="margin:0;font-weight:600;color:#059669">Telefon bildirimleri açık.</p>': izin==="yok"?'<p style="margin:0;color:#a8a29e">Bu tarayıcı bildirim desteklemiyor.</p>':'<button class="btn btn-acik" onclick="bildirimIzni()">Telefon bildirimlerini aç</button>')+
     '</div></section>';
 }
-function depoBoyutu(){ try{ return (localStorage.getItem(ANAHTAR)||"").length*2; }catch(e){ return 0; } }
 function yedekAyarHTML(){
-  var b=depoBoyutu(), oran=Math.min(100,Math.round(b/(5*1048576)*100));
-  return '<section class="kart"><div class="tablo-baslik">Yedekleme</div><div class="form-dikey">'+
-    '<p style="margin:0;font-size:14px;color:#57534e">Kayıtlar bu telefonda tutulur. Uygulamayı silmeden ya da telefon değiştirmeden önce yedek al; yedeği WhatsApp, e-posta veya Dosyalar\'a kaydedebilirsin.</p>'+
-    '<div><div class="depo-cubuk"><i style="width:'+oran+'%;background:'+(oran>80?"var(--kirmizi)":oran>60?"var(--sari)":"var(--yesil)")+'"></i></div>'+
-      '<div class="ipucu">Kullanılan alan: '+boyutYaz(b)+' · yaklaşık %'+oran+(oran>80?' — eski fotoğraf ve belgeleri silmeyi düşün':'')+'</div></div>'+
-    '<button class="btn" onclick="yedekAl()">Yedek al</button>'+
-    '<button class="btn btn-acik" onclick="document.getElementById(\'yedek-girdi\').click()">Yedekten geri yükle</button>'+
-    '<input id="yedek-girdi" type="file" accept=".json,application/json" class="gizli" onchange="yedekYukle(this)">'+
+  return '<section class="kart"><div class="tablo-baslik">Yedek</div><div class="form-dikey">'+
+    '<p style="margin:0;font-size:14px;color:#57534e">Kayıtlar ortak veritabanında saklanır. İstersen gördüğün tüm kayıtların bir kopyasını dosya olarak indirebilirsin.</p>'+
+    '<button class="btn btn-acik" onclick="yedekAl()">Yedek dosyası indir</button>'+
   '</div></section>';
 }
 function yedekAl(){
@@ -1687,24 +1676,6 @@ function yedekAl(){
   var a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([metin],{type:"application/json"})); a.download=ad;
   document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },1000);
 }
-function yedekYukle(g){
-  var d=g.files&&g.files[0]; if(!d) return;
-  var o=new FileReader();
-  o.onload=function(e){
-    var yeni=null; try{ yeni=JSON.parse(e.target.result); }catch(x){}
-    g.value="";
-    if(!yeni || !Array.isArray(yeni.kullanicilar) || !Array.isArray(yeni.isler)){ alert("Bu dosya MAQUAS yedeği değil."); return; }
-    if(!confirm("Bu telefondaki tüm kayıtlar yedektekilerle değiştirilecek ("+yeni.isler.length+" iş emri). Devam edilsin mi?")) return;
-    var eskiVeri=veri; veri=yeni;
-    try{ goc(); }catch(x){ veri=eskiVeri; alert("Yedek okunamadı: "+x.message); return; }
-    if(!kaydet()){ veri=eskiVeri; return; }
-    var ben=veri.kullanicilar.filter(function(k){ return k.id===kullanici.id; })[0];
-    kullanici=ben||null; if(!ben) sekme="takvim";
-    alert("Yedek geri yüklendi."); ciz();
-  };
-  o.readAsText(d);
-}
-
 function bildirimAc(){
   bildirimPaneli=true;
   bildirimleriTopla().forEach(function(x){ veri.gosterilenBildirim[x.id]=Date.now(); });
@@ -1713,20 +1684,13 @@ function bildirimAc(){
 function bildirimPanelHTML(){
   var l=bildirimleriTopla();
   return '<div class="perde" onclick="if(event.target===this){bildirimPaneli=false;ciz()}"><div class="modal diyalog"><div class="modal-ust"><h3>Bildirimler</h3><button class="kapat" onclick="bildirimPaneli=false;ciz()" aria-label="Kapat">&times;</button></div>'+
-    (l.length? l.map(function(x){ return '<div class="bildirim"'+(x.is?' style="cursor:pointer" onclick="bildirimPaneli=false;isAc(\''+x.is.id+'\')"':'')+'>'+(x.tur==="bayram"?"🎉 ":x.tur==="gecikme"?"⚠ ":"⏰ ")+kacir(x.metin)+'</div>'; }).join("")
+    (l.length? l.map(function(x){ return '<div class="bildirim"'+(x.is?' style="cursor:pointer" onclick="bildirimPaneli=false;isAc(\''+x.is.id+'\')"': x.tur==="onay"?' style="cursor:pointer" onclick="bildirimPaneli=false;sekmeAc(\'ayarlar\')"':'')+'>'+(x.tur==="bayram"?"🎉 ":x.tur==="gecikme"?"⚠ ":"⏰ ")+kacir(x.metin)+'</div>'; }).join("")
     : '<div class="bos">Bildirim yok.</div>')+'</div></div>';
 }
 
 /* =====================================================================
    OLAYLAR
    ===================================================================== */
-function girisDene(){
-  var ad=document.getElementById("g-ad").value.trim().toLowerCase(), s=document.getElementById("g-sifre").value;
-  var k=veri.kullanicilar.filter(function(x){ return x.kullaniciAdi.toLowerCase()===ad && x.sifre===s; })[0];
-  if(!k){ document.getElementById("g-hata").textContent="Kullanıcı adı veya şifre yanlış."; return; }
-  kullanici=k; sekme="takvim"; ciz(); tarayiciBildirimi();
-}
-function cikis(){ kullanici=null; acikForm=null; diyalog=null; secilenMusteri=null; ciz(); }
 function sekmeAc(k){ sekme=k; secilenMusteri=null; stokMusteri=null; secilenMakina=null; window.scrollTo(0,0); ciz(); }
 function gunSec(k){ secilenGun=k; ciz(); }
 function ayDegis(y){
@@ -1758,6 +1722,15 @@ function formKapat(){ acikForm=null; diyalog=null; ciz(); }
 
 function isKaydet(){
   var f=acikForm;
+  if(!f.id && !String(f.maquasKod||"").trim()){
+    var b=document.querySelector(".modal-alt .btn"); if(b){ b.disabled=true; b.textContent="Kaydediliyor…"; }
+    sb.rpc("yeni_is_kodu").then(function(r){
+      if(b){ b.disabled=false; b.textContent="Kaydet"; }
+      if(r.error){ alert("Parça kodu alınamadı: "+hataTurkce(r.error)); return; }
+      if(acikForm===f){ f.maquasKod=r.data; isKaydet(); }
+    });
+    return;
+  }
   if(!f.siparisTarihi||!f.teslimHedefi){ alert("Sipariş tarihi ve teslim tarihi gerekli."); return; }
   if(tarihe(f.teslimHedefi)<tarihe(f.siparisTarihi)){ alert("Teslim tarihi sipariş tarihinden önce olamaz."); return; }
   if(!sayi(f.adet)){ alert("Sipariş adedi gerekli."); return; }
@@ -1765,8 +1738,7 @@ function isKaydet(){
   var kayit=JSON.parse(JSON.stringify(f)); delete kayit.tur; delete kayit.musteriAdi; delete kayit.kartOlarakKaydet; delete kayit.makinadanAcildi;
   if(kayit.makina && !kayit.makina.id) delete kayit.makina;
   if(!kayit.id){
-    veri.sayac++; kayit.id=yeniId("i");
-    if(!kayit.maquasKod) kayit.maquasKod="MQ-"+("000"+veri.sayac).slice(-4);
+    kayit.id=yeniId("i");
     kayit.ilkTermin=kayit.teslimHedefi;
     kayit.gecmis=[{zaman:new Date().toISOString(),kim:kullanici.ad,islem:"Sipariş oluşturuldu · teslim günü "+tarihYaz(kayit.teslimHedefi)}];
     veri.isler.push(kayit);
@@ -1918,26 +1890,445 @@ function kartiUygula(k){
   f.not=[k.olcu?"Ölçü: "+k.olcu:"",k.operasyon?"Operasyonlar: "+k.operasyon:"",k.not].filter(Boolean).join("\n");
 }
 
-/* kullanıcı */
-function rolDegis(v){
-  document.getElementById("k-yetki").style.display = v==="calisan"? "flex":"none";
-  document.getElementById("k-musteri").style.display = v==="musteri"? "block":"none";
+/* =====================================================================
+   SUNUCU — ortak veritabanı (Supabase): giriş, kayıt, yükleme, eşitleme
+   ===================================================================== */
+var SB_ADRES="https://edsobbzibtwnuvtzkmay.supabase.co";
+var SB_ANAHTAR="sb_publishable_8fsay0QOkbUGLGSlMw67sA_gK_JkE9l";   /* açık anahtar; asıl koruma sunucudaki yetki kurallarında */
+var UYGULAMA_ADRESI=location.origin+"/takip.html";
+var sb=null;
+var oturum=null;              /* Supabase kullanıcısı */
+var profil=null;              /* profiller satırı */
+var girisMod="giris";         /* giris | kayit | sifre | yeniSifre | bekle | yukleniyor | bilgi */
+var girisBilgi="", girisBaslik="Bilgi";
+var senkDurum="tamam";        /* tamam | gonderiliyor | hata | cevrimdisi */
+var senkHata="";
+var cizimBekliyor=false;
+var kanal=null;
+
+/* uygulamadaki koleksiyon → veritabanı tablosu */
+var TABLOLAR=[
+  {kol:"musteriler",    tablo:"cariler",        yaz:function(){ return yonetici(); }},
+  {kol:"parcaKartlari", tablo:"parca_kartlari", yaz:function(){ return yonetici(); }},
+  {kol:"tahsilatlar",   tablo:"tahsilatlar",    yaz:function(){ return yonetici(); }},
+  {kol:"ekKalemler",    tablo:"ek_kalemler",    yaz:function(){ return yonetici(); }},
+  {kol:"stoklar",       tablo:"stoklar",        yaz:function(){ return yetki("stok"); }},
+  {kol:"makinalar",     tablo:"makinalar",      yaz:function(){ return yonetici(); }},
+  {kol:"bakimlar",      tablo:"bakimlar",       yaz:function(){ return yetki("makina"); }},
+  {kol:"isler",         tablo:"isler",          yaz:function(){ return yetkiIsAc()||yetkiKapat(); }}
+];
+var FINANS_ALAN=["paraBirimi","malzemeUcreti","ekMaliyetler","satisFiyati"];
+var sonHal={};                /* tablo → {id: son gönderilen/alınan JSON} */
+
+function yetki(k){
+  if(!kullanici) return false;
+  if(yonetici()) return true;
+  if(musteriRol()) return false;
+  var v=kullanici.yetki? kullanici.yetki[k] : undefined;
+  return v==null? (k==="stok"||k==="makina") : !!v;
 }
-function kisiEkle(){
-  var ad=document.getElementById("k-ad").value.trim(), kad=document.getElementById("k-kad").value.trim(), s=document.getElementById("k-sifre").value, rol=document.getElementById("k-rol").value;
-  if(!ad||!kad||!s){ alert("Ad, kullanıcı adı ve şifre gerekli."); return; }
-  if(veri.kullanicilar.some(function(k){ return k.kullaniciAdi.toLowerCase()===kad.toLowerCase(); })){ alert("Bu kullanıcı adı zaten var."); return; }
-  var kayit={id:yeniId("u"),ad:ad,kullaniciAdi:kad,sifre:s,rol:rol,yetki:{isAc:false,kapat:false}};
-  if(rol==="admin") kayit.yetki={isAc:true,kapat:true};
-  else if(rol==="calisan") kayit.yetki={isAc:document.getElementById("k-isac").checked,kapat:document.getElementById("k-kapat").checked};
-  else {
-    var mid=document.getElementById("k-mid").value;
-    if(!mid){ alert("Önce Cariler sekmesinden müşteri kartı oluştur."); return; }
-    kayit.musteriId=mid;
+function fiyatGorur(){ return yetki("fiyat"); }
+function rolCevir(r){ return r==="personel"? "calisan" : r; }
+
+/* ---------- satır <-> nesne ---------- */
+function isSatiri(is){
+  var v=JSON.parse(JSON.stringify(is)); FINANS_ALAN.forEach(function(a){ delete v[a]; });
+  return {id:is.id, musteri_id:is.musteriId||null, veri:v};
+}
+function finansSatiri(is){
+  var v={}; FINANS_ALAN.forEach(function(a){ if(is[a]!==undefined) v[a]=is[a]; });
+  return {is_id:is.id, veri:v};
+}
+function hepsiniCek(tablo,sutun){
+  var sonuc=[], adim=1000;
+  function parca(bas){
+    return sb.from(tablo).select(sutun||"*").range(bas,bas+adim-1).then(function(r){
+      if(r.error) throw r.error;
+      sonuc=sonuc.concat(r.data||[]);
+      return (r.data||[]).length===adim? parca(bas+adim) : sonuc;
+    });
   }
-  veri.kullanicilar.push(kayit); kaydet(); ciz();
+  return parca(0);
 }
-function kisiSil(id){ if(!confirm("Kullanıcı silinsin mi?")) return; veri.kullanicilar=veri.kullanicilar.filter(function(k){ return k.id!==id; }); kaydet(); ciz(); }
+
+/* ---------- açılış ---------- */
+function sunucuBaslat(){
+  if(!window.supabase || !window.supabase.createClient){
+    girisMod="bilgi"; girisBaslik="Bağlantı yok"; girisBilgi="Sunucuya bağlanılamadı. İnternet bağlantını kontrol edip uygulamayı yeniden aç.";
+    var ob=onbellekOku(); if(ob){ girisBilgi+=" (Çevrimdışı kayıtlar için önce giriş yapılmış olmalı.)"; }
+    ciz(); return;
+  }
+  sb=window.supabase.createClient(SB_ADRES,SB_ANAHTAR,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+  girisMod="yukleniyor"; ciz();
+  sb.auth.onAuthStateChange(function(olay,s){
+    if(olay==="PASSWORD_RECOVERY"){ girisMod="yeniSifre"; kullanici=null; ciz(); return; }
+    if(olay==="SIGNED_OUT"){ oturumuKapat(); return; }
+    if((olay==="SIGNED_IN"||olay==="INITIAL_SESSION") && s && s.user && (!oturum || oturum.id!==s.user.id) && girisMod!=="yeniSifre"){
+      setTimeout(function(){ oturumAc(s.user); },0);
+    }
+    if(olay==="INITIAL_SESSION" && !s){ girisMod="giris"; ciz(); }
+  });
+  window.addEventListener("online",function(){ if(kullanici){ senkDurum="tamam"; kaydet(); verileriYukle(true); } });
+  window.addEventListener("offline",function(){ senkDurum="cevrimdisi"; ustDurumYenile(); });
+  document.addEventListener("visibilitychange",function(){ if(!document.hidden && kullanici) verileriYukle(true); });
+}
+
+function oturumAc(user){
+  oturum=user;
+  return profilGetir(user.id,0).then(function(p){
+    profil=p;
+    if(!p || p.rol==="yok"){ kullanici=null; girisMod="bekle"; kanalKur(); ciz(); return; }
+    kullanici={id:p.id, ad:p.ad||p.kullanici_adi||p.eposta, kullaniciAdi:p.kullanici_adi, eposta:p.eposta, rol:rolCevir(p.rol), musteriId:p.musteri_id, yetki:p.yetki||{}};
+    try{ veri.gosterilenBildirim=JSON.parse(localStorage.getItem("maquas-bildirim-"+p.id)||"{}"); }catch(e){ veri.gosterilenBildirim={}; }
+    var ob=onbellekOku();
+    if(ob){ veriyiYerlestir(ob,false); ciz(); }
+    else { girisMod="yukleniyor"; ciz(); }
+    return verileriYukle(false).then(function(){ kanalKur(); sekme=sekme||"takvim"; ciz(); tarayiciBildirimi(); });
+  }).catch(function(e){
+    if(!navigator.onLine){
+      var ob=onbellekOku();
+      if(ob && profil){ veriyiYerlestir(ob,false); senkDurum="cevrimdisi"; ciz(); return; }
+    }
+    girisMod="bilgi"; girisBaslik="Bir sorun oluştu"; girisBilgi="Hesap bilgileri alınamadı: "+(e&&e.message||e); ciz();
+  });
+}
+function profilGetir(id,deneme){
+  return sb.from("profiller").select("*").eq("id",id).maybeSingle().then(function(r){
+    if(r.error) throw r.error;
+    if(!r.data && deneme<3) return new Promise(function(ok){ setTimeout(ok,700); }).then(function(){ return profilGetir(id,deneme+1); });
+    return r.data;
+  });
+}
+function oturumuKapat(){
+  if(kanal){ try{ sb.removeChannel(kanal); }catch(e){} kanal=null; }
+  oturum=null; profil=null; kullanici=null; acikForm=null; diyalog=null; secilenMusteri=null; stokMusteri=null; secilenMakina=null;
+  veri=bosVeri(); sonHal={}; girisMod="giris"; girisBilgi=""; ciz();
+}
+
+/* ---------- veriyi indir ---------- */
+function verileriYukle(sessiz){
+  var istekler=[], yeni=bosVeri();
+  function al(tablo,kol,donustur){
+    istekler.push(hepsiniCek(tablo).then(function(satirlar){ yeni[kol]=satirlar.map(donustur||function(s){ return s.veri; }); yeni["_"+tablo]=satirlar; }));
+  }
+  al("isler","isler",function(s){ var v=s.veri; v.id=s.id; v.musteriId=s.musteri_id||v.musteriId||""; return v; });
+  if(fiyatGorur()) istekler.push(hepsiniCek("is_finans").then(function(s){ yeni._finans=s; }));
+  if(yonetici()){
+    al("cariler","musteriler"); al("parca_kartlari","parcaKartlari"); al("tahsilatlar","tahsilatlar"); al("ek_kalemler","ekKalemler");
+    istekler.push(hepsiniCek("profiller").then(function(s){ yeni.kullanicilar=s.map(profilNesnesi); }));
+  } else if(!musteriRol()){
+    istekler.push(hepsiniCek("cari_adlar").then(function(s){ yeni.musteriler=s.map(function(c){ return {id:c.id,ad:c.ad||"",tur:c.tur,silindi:c.silindi?{zaman:new Date().toISOString(),kim:""}:undefined}; }); }));
+    istekler.push(hepsiniCek("kisi_adlar").then(function(s){ yeni.kullanicilar=s.map(function(k){ return {id:k.id,ad:k.ad,rol:"calisan"}; }); }));
+  }
+  if(yetki("stok")) al("stoklar","stoklar");
+  if(yetki("makina")){ al("makinalar","makinalar"); al("bakimlar","bakimlar",function(s){ var v=s.veri; v.id=s.id; v._olusturan=s.olusturan; return v; }); }
+  return Promise.all(istekler).then(function(){
+    if(yeni._finans){
+      var f={}; yeni._finans.forEach(function(s){ f[s.is_id]=s.veri; });
+      yeni.isler.forEach(function(is){ var x=f[is.id]; if(x) FINANS_ALAN.forEach(function(a){ if(x[a]!==undefined) is[a]=x[a]; }); });
+    }
+    veriyiYerlestir(yeni,true);
+    if(senkDurum!=="hata") senkDurum="tamam";
+    if(yonetici()) copBosalt();
+    if(sessiz) yenidenCiz(); else girisMod="giris";
+  }).catch(function(e){
+    if(!navigator.onLine){ senkDurum="cevrimdisi"; ustDurumYenile(); return; }
+    senkDurum="hata"; senkHata="Veriler alınamadı: "+(e&&e.message||e); ustDurumYenile();
+    if(!sessiz) throw e;
+  });
+}
+function profilNesnesi(p){ return {id:p.id, ad:p.ad||p.kullanici_adi, kullaniciAdi:p.kullanici_adi, eposta:p.eposta, rol:p.rol, musteriId:p.musteri_id, yetki:p.yetki||{}, olusturma:p.olusturma}; }
+
+/* indirilen veriyi uygulamaya yerleştirir; sunucu hali "son hal" olarak kaydedilir */
+function veriyiYerlestir(yeni,sunucudan){
+  var b=veri && veri.gosterilenBildirim || {};
+  ["musteriler","parcaKartlari","tahsilatlar","ekKalemler","stoklar","makinalar","bakimlar","isler","kullanicilar"].forEach(function(k){ veri[k]=yeni[k]||[]; });
+  veri.gosterilenBildirim=b;
+  goc();
+  if(sunucudan){
+    sonHal={};
+    TABLOLAR.forEach(function(t){ sonHal[t.tablo]={}; });
+    sonHal.is_finans={};
+    TABLOLAR.forEach(function(t){
+      veri[t.kol].forEach(function(x){
+        if(t.tablo==="isler"){ sonHal.isler[x.id]=JSON.stringify(isSatiri(x)); if(fiyatGorur()) sonHal.is_finans[x.id]=JSON.stringify(finansSatiri(x)); }
+        else sonHal[t.tablo][x.id]=JSON.stringify(temizNesne(x));
+      });
+    });
+    onbellekYaz();
+  }
+}
+function temizNesne(x){ var v=JSON.parse(JSON.stringify(x)); delete v._olusturan; return v; }
+
+/* ---------- kaydet: değişen kayıtları sunucuya gönderir ---------- */
+var senkSirada=false, senkTekrar=false;
+function kaydet(){
+  try{ localStorage.setItem("maquas-bildirim-"+(kullanici&&kullanici.id), JSON.stringify(veri.gosterilenBildirim||{})); }catch(e){}
+  if(!kullanici || !sb) return true;
+  onbellekYaz();
+  if(senkSirada){ senkTekrar=true; return true; }
+  senkSirada=true; senkDurum="gonderiliyor"; ustDurumYenile();
+  senkronEt().then(function(){
+    senkSirada=false; senkDurum="tamam"; senkHata=""; ustDurumYenile();
+    if(senkTekrar){ senkTekrar=false; kaydet(); }
+  }).catch(function(e){
+    senkSirada=false; senkTekrar=false;
+    if(!navigator.onLine){ senkDurum="cevrimdisi"; ustDurumYenile(); return; }
+    senkDurum="hata"; senkHata=(e&&e.message)||String(e); ustDurumYenile();
+    var yetkiHatasi=/row-level security|permission|42501/i.test(senkHata);
+    alert(yetkiHatasi? "Bu işlem için yetkin yok. Değişiklik geri alındı." : "Kaydedilemedi: "+senkHata+"\nBağlantı gelince tekrar denenecek.");
+    if(yetkiHatasi) verileriYukle(true);
+  });
+  return true;
+}
+function senkronEt(){
+  var isler=[];
+  TABLOLAR.forEach(function(t){
+    if(!t.yaz()) return;
+    var eski=sonHal[t.tablo]||(sonHal[t.tablo]={}), simdi={}, ekle=[], sil=[];
+    var finansEski=sonHal.is_finans||(sonHal.is_finans={}), finansEkle=[], finansSimdi={};
+    veri[t.kol].forEach(function(x){
+      if(!x.id) return;
+      if(t.tablo==="isler"){
+        var satir=isSatiri(x), j=JSON.stringify(satir); simdi[x.id]=j; if(eski[x.id]!==j) ekle.push(satir);
+        if(fiyatGorur()){ var fs=finansSatiri(x), fj=JSON.stringify(fs); finansSimdi[x.id]=fj; if(finansEski[x.id]!==fj) finansEkle.push(fs); }
+      } else {
+        var v=temizNesne(x), j2=JSON.stringify(v); simdi[x.id]=j2;
+        if(eski[x.id]!==j2){ var s={id:x.id, veri:v}; ekle.push(s); }
+      }
+    });
+    Object.keys(eski).forEach(function(id){ if(!(id in simdi)) sil.push(id); });
+    if(!ekle.length && !sil.length && !finansEkle.length) return;
+    isler.push(Promise.resolve().then(function(){
+      return ekle.length? sb.from(t.tablo).upsert(ekle).then(hataKontrol) : null;
+    }).then(function(){
+      return finansEkle.length? sb.from("is_finans").upsert(finansEkle).then(hataKontrol) : null;
+    }).then(function(){
+      return sil.length? sb.from(t.tablo).delete().in("id",sil).then(hataKontrol) : null;
+    }).then(function(){
+      ekle.forEach(function(s){ eski[s.id]=simdi[s.id]; });
+      finansEkle.forEach(function(s){ finansEski[s.is_id]=finansSimdi[s.is_id]; });
+      sil.forEach(function(id){ delete eski[id]; delete finansEski[id]; });
+    }));
+  });
+  return Promise.all(isler);
+}
+function hataKontrol(r){ if(r && r.error) throw r.error; return r; }
+
+/* ---------- anlık güncelleme ---------- */
+function kanalKur(){
+  if(kanal || !sb) return;
+  kanal=sb.channel("degisiklikler").on("postgres_changes",{event:"*",schema:"public"},function(p){ uzaktanDegisiklik(p); }).subscribe();
+}
+function uzaktanDegisiklik(p){
+  var tablo=p.table;
+  if(tablo==="profiller"){
+    if(oturum && ((p.new&&p.new.id===oturum.id)||(p.old&&p.old.id===oturum.id))){ oturumAc(oturum); return; }
+    if(yonetici()) verileriYukle(true);
+    return;
+  }
+  if(!kullanici) return;
+  if(tablo==="is_finans"){
+    var fid=(p.new&&p.new.is_id)||(p.old&&p.old.is_id), is=veri.isler.filter(function(x){ return x.id===fid; })[0];
+    if(is && p.new && p.new.veri){ FINANS_ALAN.forEach(function(a){ is[a]=p.new.veri[a]; }); sonHal.is_finans[fid]=JSON.stringify(finansSatiri(is)); }
+    yenidenCiz(); return;
+  }
+  var t=TABLOLAR.filter(function(x){ return x.tablo===tablo; })[0]; if(!t) return;
+  var id=(p.new&&p.new.id)||(p.old&&p.old.id); if(!id) return;
+  var liste=veri[t.kol], i=-1;
+  liste.forEach(function(x,j){ if(x.id===id) i=j; });
+  if(p.eventType==="DELETE"){
+    if(i>=0) liste.splice(i,1); delete (sonHal[tablo]||{})[id];
+  } else if(p.new && p.new.veri){
+    var v=p.new.veri; v.id=id;
+    if(tablo==="isler"){ v.musteriId=p.new.musteri_id||v.musteriId||""; if(i>=0) FINANS_ALAN.forEach(function(a){ if(liste[i][a]!==undefined && v[a]===undefined) v[a]=liste[i][a]; }); }
+    if(tablo==="bakimlar") v._olusturan=p.new.olusturan;
+    if(i>=0) liste[i]=v; else liste.push(v);
+    goc();
+    sonHal[tablo]=sonHal[tablo]||{};
+    sonHal[tablo][id]= tablo==="isler"? JSON.stringify(isSatiri(v)) : JSON.stringify(temizNesne(v));
+  } else { verileriYukle(true); return; }
+  onbellekYaz(); yenidenCiz();
+}
+/* kullanıcı yazarken ekranı yeniden çizme; form kapanınca çiz */
+function yenidenCiz(){
+  var a=document.activeElement, yaziyor=a && (a.tagName==="INPUT"||a.tagName==="TEXTAREA"||a.tagName==="SELECT");
+  if(acikForm || diyalog || yaziyor){ cizimBekliyor=true; ustDurumYenile(); return; }
+  cizimBekliyor=false; ciz();
+}
+document.addEventListener("focusout",function(){ setTimeout(function(){ if(cizimBekliyor && !acikForm && !diyalog) yenidenCiz(); },300); });
+
+/* ---------- çevrimdışı önbellek (yalnız bu telefonda, son görülen veriler) ---------- */
+function onbellekYaz(){
+  if(!kullanici) return;
+  try{ var k={}; ["musteriler","parcaKartlari","tahsilatlar","ekKalemler","stoklar","makinalar","bakimlar","isler","kullanicilar"].forEach(function(a){ k[a]=veri[a]; });
+    localStorage.setItem("maquas-onbellek-"+kullanici.id, JSON.stringify({zaman:Date.now(),veri:k})); }catch(e){}
+}
+function onbellekOku(){
+  var id=(kullanici&&kullanici.id)||(profil&&profil.id); if(!id) return null;
+  try{ var o=JSON.parse(localStorage.getItem("maquas-onbellek-"+id)||"null"); return o&&o.veri; }catch(e){ return null; }
+}
+
+/* ---------- üst şeritteki eşitleme durumu ---------- */
+function senkRozetHTML(){
+  if(senkDurum==="gonderiliyor") return '<span class="senk senk-gri" title="Kaydediliyor">Kaydediliyor…</span>';
+  if(senkDurum==="cevrimdisi") return '<span class="senk senk-sari" title="İnternet yok; değişiklikler bağlantı gelince gönderilecek">Çevrimdışı</span>';
+  if(senkDurum==="hata") return '<button class="senk senk-kirmizi" onclick="alert(senkHata||\'Kaydedilemedi\');kaydet()" title="Tekrar dene">Kaydedilemedi ↻</button>';
+  if(cizimBekliyor) return '<span class="senk senk-gri">Yeni değişiklik var</span>';
+  return '';
+}
+function ustDurumYenile(){ var e=document.getElementById("senk-alan"); if(e) e.innerHTML=senkRozetHTML(); }
+
+/* ---------- giriş / kayıt / şifre ekranı ---------- */
+function girisFormHTML(){
+  var m=girisMod, ic="";
+  var hata='<div id="g-hata" class="hata">'+(m==="giris"&&girisBilgi?kacir(girisBilgi):"")+'</div>';
+  if(m==="yukleniyor") return '<div class="giris-durum"><div class="donen"></div><p>Yükleniyor…</p></div>';
+  if(m==="bilgi") return '<h2>'+kacir(girisBaslik)+'</h2><p class="giris-alt" style="text-align:left">'+kacir(girisBilgi)+'</p><button class="btn btn-tam giris-btn" onclick="girisMod=\'giris\';girisBilgi=\'\';ciz()">Girişe dön</button>';
+  if(m==="bekle") return '<h2>Onay bekleniyor</h2><p class="giris-alt" style="text-align:left">Hesabın açıldı'+(profil&&profil.eposta?' ('+kacir(profil.eposta)+')':'')+'. Yönetici yetki verdiğinde uygulama kendiliğinden açılır.</p>'+
+    '<button class="btn btn-acik btn-tam" onclick="oturum&&oturumAc(oturum)">Tekrar kontrol et</button><button class="btn btn-tam giris-btn" style="background:#fff;color:#d71920;border:1px solid #d71920" onclick="cikis()">Çıkış yap</button>';
+  if(m==="kayit"){
+    ic='<h2>Kayıt ol</h2><p class="giris-alt">Kaydolduktan sonra e-postana onay bağlantısı gelir</p>'+
+      '<form onsubmit="event.preventDefault();kayitOl()">'+
+      '<label for="g-adsoyad">Ad soyad</label><input id="g-adsoyad" autocomplete="name" placeholder="Adın ve soyadın">'+
+      '<label for="g-eposta" style="margin-top:14px">E-posta</label><input id="g-eposta" type="email" inputmode="email" autocapitalize="none" autocomplete="email" placeholder="ornek@firma.com">'+
+      '<label for="g-sifre" style="margin-top:14px">Şifre</label><div class="sifre-kutu"><input id="g-sifre" type="password" autocomplete="new-password" placeholder="En az 8 karakter"><button type="button" class="goz" onclick="sifreGoster(this)">Göster</button></div>'+
+      hata+'<button class="btn btn-tam giris-btn" type="submit">Kayıt ol</button></form>'+
+      '<p class="giris-dip"><a href="#" onclick="event.preventDefault();girisMod=\'giris\';ciz()">Hesabın var mı? Giriş yap</a></p>';
+    return ic;
+  }
+  if(m==="sifre"){
+    return '<h2>Şifremi unuttum</h2><p class="giris-alt">E-postana şifre yenileme bağlantısı gönderelim</p>'+
+      '<form onsubmit="event.preventDefault();sifreSifirla()"><label for="g-eposta">E-posta</label><input id="g-eposta" type="email" inputmode="email" autocapitalize="none" autocomplete="email">'+
+      hata+'<button class="btn btn-tam giris-btn" type="submit">Bağlantı gönder</button></form>'+
+      '<p class="giris-dip"><a href="#" onclick="event.preventDefault();girisMod=\'giris\';ciz()">Girişe dön</a></p>';
+  }
+  if(m==="yeniSifre"){
+    return '<h2>Yeni şifre</h2><p class="giris-alt">Hesabın için yeni bir şifre belirle</p>'+
+      '<form onsubmit="event.preventDefault();yeniSifreKaydet()"><label for="g-sifre">Yeni şifre</label><div class="sifre-kutu"><input id="g-sifre" type="password" autocomplete="new-password" placeholder="En az 8 karakter"><button type="button" class="goz" onclick="sifreGoster(this)">Göster</button></div>'+
+      hata+'<button class="btn btn-tam giris-btn" type="submit">Şifreyi kaydet</button></form>';
+  }
+  return '<h2>İş Takip Sistemi</h2><p class="giris-alt">Hesabınla giriş yap</p>'+
+    '<form onsubmit="event.preventDefault();girisDene()">'+
+      '<label for="g-eposta">E-posta</label><input id="g-eposta" type="email" inputmode="email" autocapitalize="none" autocomplete="username" placeholder="ornek@firma.com">'+
+      '<label for="g-sifre" style="margin-top:14px">Şifre</label><div class="sifre-kutu"><input id="g-sifre" type="password" autocomplete="current-password" placeholder="••••••••"><button type="button" class="goz" onclick="sifreGoster(this)" aria-label="Şifreyi göster">Göster</button></div>'+
+      hata+'<button class="btn btn-tam giris-btn" type="submit">Giriş yap</button></form>'+
+    '<div class="giris-baglantilar"><a href="#" onclick="event.preventDefault();girisMod=\'sifre\';ciz()">Şifremi unuttum</a><a href="#" onclick="event.preventDefault();girisMod=\'kayit\';ciz()"><b>Kayıt ol</b></a></div>'+
+    '<p class="giris-dip">Kaydolduktan sonra yönetici hesabını onaylar.</p>';
+}
+function gHata(m){ var e=document.getElementById("g-hata"); if(e) e.textContent=m; }
+function gBekle(b,acik){ var x=document.querySelector(".giris-btn"); if(x){ x.disabled=acik; if(acik){ x.dataset.e=x.textContent; x.textContent="Lütfen bekle…"; } else if(x.dataset.e) x.textContent=x.dataset.e; } }
+function hataTurkce(e){
+  var m=(e&&e.message)||String(e);
+  if(/Invalid login/i.test(m)) return "E-posta veya şifre yanlış.";
+  if(/Email not confirmed/i.test(m)) return "E-posta adresin henüz onaylanmamış. Gelen kutundaki onay bağlantısına tıkla.";
+  if(/already registered|already exists/i.test(m)) return "Bu e-postayla zaten bir hesap var. Giriş yap ya da şifreni yenile.";
+  if(/Password should be|weak/i.test(m)) return "Şifre çok kısa ya da zayıf. En az 8 karakter kullan.";
+  if(/rate limit|too many/i.test(m)) return "Çok fazla deneme yapıldı. Biraz bekleyip tekrar dene.";
+  if(/fetch|network/i.test(m)) return "Sunucuya ulaşılamadı. İnternet bağlantını kontrol et.";
+  return m;
+}
+function girisDene(){
+  var e=document.getElementById("g-eposta").value.trim(), s=document.getElementById("g-sifre").value;
+  if(!e||!s){ gHata("E-posta ve şifreyi yaz."); return; }
+  gBekle(null,true);
+  sb.auth.signInWithPassword({email:e,password:s}).then(function(r){
+    gBekle(null,false);
+    if(r.error){ gHata(hataTurkce(r.error)); return; }
+    girisBilgi=""; oturumAc(r.data.user);
+  });
+}
+function kayitOl(){
+  var ad=document.getElementById("g-adsoyad").value.trim(), e=document.getElementById("g-eposta").value.trim(), s=document.getElementById("g-sifre").value;
+  if(!ad){ gHata("Adını ve soyadını yaz."); return; }
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)){ gHata("Geçerli bir e-posta yaz."); return; }
+  if(s.length<8){ gHata("Şifre en az 8 karakter olmalı."); return; }
+  gBekle(null,true);
+  sb.auth.signUp({email:e,password:s,options:{data:{ad:ad},emailRedirectTo:UYGULAMA_ADRESI}}).then(function(r){
+    gBekle(null,false);
+    if(r.error){ gHata(hataTurkce(r.error)); return; }
+    if(r.data && r.data.session){ oturumAc(r.data.user); return; }
+    girisMod="bilgi"; girisBaslik="E-postanı kontrol et"; girisBilgi=e+" adresine bir onay bağlantısı gönderdik. E-postandaki bağlantıya tıkla; uygulama açılınca giriş yap. E-posta birkaç dakika içinde gelmezse gereksiz (spam) klasörüne bak.";
+    ciz();
+  });
+}
+function sifreSifirla(){
+  var e=document.getElementById("g-eposta").value.trim();
+  if(!e){ gHata("E-postanı yaz."); return; }
+  gBekle(null,true);
+  sb.auth.resetPasswordForEmail(e,{redirectTo:UYGULAMA_ADRESI}).then(function(r){
+    gBekle(null,false);
+    if(r.error){ gHata(hataTurkce(r.error)); return; }
+    girisMod="bilgi"; girisBaslik="E-postanı kontrol et"; girisBilgi="Bu e-postayla bir hesap varsa şifre yenileme bağlantısı gönderildi. Bağlantıya tıklayınca yeni şifreni belirleyebilirsin."; ciz();
+  });
+}
+function yeniSifreKaydet(){
+  var s=document.getElementById("g-sifre").value;
+  if(s.length<8){ gHata("Şifre en az 8 karakter olmalı."); return; }
+  gBekle(null,true);
+  sb.auth.updateUser({password:s}).then(function(r){
+    gBekle(null,false);
+    if(r.error){ gHata(hataTurkce(r.error)); return; }
+    girisMod="giris"; sb.auth.getUser().then(function(u){ if(u.data&&u.data.user) oturumAc(u.data.user); else ciz(); });
+  });
+}
+function cikis(){ if(sb) sb.auth.signOut().then(oturumuKapat,oturumuKapat); else oturumuKapat(); }
+
+/* ---------- yönetici: kullanıcı yönetimi ---------- */
+var YETKI_ANAHTARLARI=[["isAc","Yeni iş emri açabilir"],["kapat","Teslimat girip sipariş kapatabilir"],["fiyat","Fiyat ve maliyetleri görebilir"],["stok","Stok bölümünü kullanabilir"],["makina","Makinalar ve bakım kayıtlarını kullanabilir"]];
+var acikKisi=null;
+function kullanicilarHTML(){
+  var l=(veri.kullanicilar||[]).slice().sort(function(a,b){ return (a.rol==="yok"?0:1)-(b.rol==="yok"?0:1) || String(a.ad).localeCompare(String(b.ad),"tr"); });
+  var bekleyen=l.filter(function(u){ return u.rol==="yok"; }).length;
+  var musteriler=canli(veri.musteriler).filter(function(m){ return (m.tur||"musteri")==="musteri"; }).sort(function(a,b){ return a.ad.localeCompare(b.ad,"tr"); });
+  return '<section class="kart ayar-tam"><div class="tablo-baslik">Kullanıcılar'+(bekleyen?' <span class="rozet-kirmizi">'+bekleyen+' onay bekliyor</span>':'')+'</div>'+
+    '<p style="margin:0;padding:12px 16px 0;font-size:13px;color:#57534e">Yeni kişiler uygulamadaki "Kayıt ol" ekranından kaydolur ve burada onay bekler. Rolünü seçip kaydettiğinde uygulamaya erişir.</p>'+
+    (l.length? l.map(function(u){
+      var ben=u.id===kullanici.id, ac=acikKisi===u.id;
+      var rolAd={admin:"Yönetici",personel:"Personel",musteri:"Müşteri",yok:"Onay bekliyor"}[u.rol]||u.rol;
+      var ust='<button class="kisi-satir'+(u.rol==="yok"?" bekliyor":"")+'" onclick="acikKisi='+(ac?'null':'\''+u.id+'\'')+';ciz()"><div style="min-width:0"><div style="font-weight:700">'+kacir(u.ad||"(adsız)")+(ben?' <span style="font-weight:400;color:#a8a29e">(sen)</span>':'')+'</div>'+
+        '<div style="font-size:13px;color:#a8a29e;overflow:hidden;text-overflow:ellipsis">'+kacir(u.eposta||"")+'</div></div><span class="rol-rozet r-'+u.rol+'">'+rolAd+(u.rol==="musteri"&&u.musteriId?' · '+kacir(musteriAdi(u.musteriId)):'')+'</span></button>';
+      if(!ac) return ust;
+      var y=u.yetki||{};
+      return ust+'<div class="kisi-detay" data-id="'+u.id+'">'+
+        '<div><label for="kd-ad-'+u.id+'">Ad soyad</label><input id="kd-ad-'+u.id+'" value="'+kacir(u.ad||"")+'"></div>'+
+        '<div><label for="kd-rol-'+u.id+'">Rol</label><select id="kd-rol-'+u.id+'" onchange="kisiRolDegis(\''+u.id+'\',this.value)"'+(ben?' disabled':'')+'>'+
+          [["yok","Erişim yok (onay bekliyor)"],["personel","Personel"],["musteri","Müşteri — yalnız kendi siparişleri"],["admin","Yönetici — her şey"]].map(function(r){ return '<option value="'+r[0]+'"'+(u.rol===r[0]?" selected":"")+'>'+r[1]+'</option>'; }).join("")+'</select>'+
+          (ben?'<div class="ipucu">Kendi rolünü değiştiremezsin.</div>':'')+'</div>'+
+        '<div id="kd-mus-'+u.id+'" style="display:'+(u.rol==="musteri"?"block":"none")+'"><label for="kd-mid-'+u.id+'">Hangi müşteri firması</label><select id="kd-mid-'+u.id+'"><option value="">— Seç —</option>'+
+          musteriler.map(function(m){ return '<option value="'+m.id+'"'+(u.musteriId===m.id?" selected":"")+'>'+kacir(m.ad)+'</option>'; }).join("")+'</select>'+
+          (musteriler.length?'':'<div class="ipucu">Önce Cariler bölümünden müşteri kartı aç.</div>')+'</div>'+
+        '<div id="kd-yet-'+u.id+'" class="yetki-liste" style="display:'+(u.rol==="personel"?"flex":"none")+'">'+
+          YETKI_ANAHTARLARI.map(function(k){ var v=y[k[0]]; if(v==null) v=(k[0]==="stok"||k[0]==="makina"); return '<label class="kutucuk"><input type="checkbox" id="kd-'+k[0]+'-'+u.id+'"'+(v?" checked":"")+'> '+k[1]+'</label>'; }).join("")+'</div>'+
+        '<button class="btn" onclick="kisiKaydet(\''+u.id+'\')">Kaydet</button>'+
+      '</div>';
+    }).join("") : '<div class="satir" style="color:#a8a29e">Kullanıcı yok.</div>')+'</section>';
+}
+function kisiRolDegis(id,v){
+  var m=document.getElementById("kd-mus-"+id), y=document.getElementById("kd-yet-"+id);
+  if(m) m.style.display=v==="musteri"?"block":"none"; if(y) y.style.display=v==="personel"?"flex":"none";
+}
+function kisiKaydet(id){
+  var rol=document.getElementById("kd-rol-"+id).value, ad=document.getElementById("kd-ad-"+id).value.trim(), mid=document.getElementById("kd-mid-"+id).value;
+  if(rol==="musteri" && !mid){ alert("Müşteri rolü için firma seç."); return; }
+  var y={}; YETKI_ANAHTARLARI.forEach(function(k){ var e=document.getElementById("kd-"+k[0]+"-"+id); y[k[0]]=!!(e&&e.checked); });
+  var degisim={ad:ad, rol:rol, musteri_id: rol==="musteri"? mid : null, yetki: rol==="personel"? y : {}};
+  if(id===kullanici.id) delete degisim.rol;
+  sb.from("profiller").update(degisim).eq("id",id).select().then(function(r){
+    if(r.error||!r.data||!r.data.length){ alert("Kaydedilemedi: "+((r.error&&r.error.message)||"yetki yok")); return; }
+    var u=veri.kullanicilar.filter(function(x){ return x.id===id; })[0];
+    if(u){ var n=profilNesnesi(r.data[0]); Object.keys(n).forEach(function(k){ u[k]=n[k]; }); }
+    if(id===kullanici.id){ kullanici.ad=ad; }
+    acikKisi=null; ciz();
+  });
+}
+function sifreDegistirAc(){ diyalog={tur:"sifreDegistir"}; ciz(); }
+function sifreDegistir(){
+  var s=document.getElementById("d-yeni").value, s2=document.getElementById("d-yeni2").value;
+  if(s.length<8){ dHata("Şifre en az 8 karakter olmalı."); return; }
+  if(s!==s2){ dHata("Şifreler aynı değil."); return; }
+  sb.auth.updateUser({password:s}).then(function(r){ if(r.error){ dHata(hataTurkce(r.error)); return; } diyalog=null; ciz(); alert("Şifren değiştirildi."); });
+}
 
 /* =====================================================================
    BAŞLAT
@@ -1946,12 +2337,12 @@ if("serviceWorker" in navigator && location.protocol.indexOf("http")===0){
   window.addEventListener("load",function(){ navigator.serviceWorker.register("/takip-sw.js").catch(function(){}); });
 }
 try{
-  yukle();
+  veri=bosVeri();
   var s0=new Date();
   gosterAy={y:s0.getFullYear(),m:s0.getMonth()};
   secilenGun=bugun();
   raporAy=s0.getFullYear()+"-"+ikiHane(s0.getMonth()+1);
-  ciz();
+  sunucuBaslat();
   setInterval(function(){ if(kullanici){ tarayiciBildirimi(); } },60000);   /* saat 10:00 geldiğinde açık uygulamaya bildirim */
 }catch(e){
   document.getElementById("kok").innerHTML='<div style="padding:20px;font-family:Arial,sans-serif"><h2 style="color:#d71920">Başlatma hatası</h2><pre style="white-space:pre-wrap;background:#f5f5f4;padding:12px;font-size:13px">'+(e&&e.message)+"\n"+(e&&e.stack)+'</pre></div>';
