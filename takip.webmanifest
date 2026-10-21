@@ -1,6 +1,6 @@
 {
-  "name": "Maquas iş takip sistemi",
-  "short_name": "Maquas iş takip sistemi",
+  "name": "Maquas İş Takip Sistemi",
+  "short_name": "Maquas İş Takip Sistemi",
   "description": "Sipariş, termin ve teslimat takibi",
   "start_url": "/takip.html",
   "scope": "/",

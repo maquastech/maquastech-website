@@ -2,7 +2,7 @@
    Uygulama dosyalarini onbellege alir, internet yokken de acilir.
    Surum numarasini degistirirsen tarayici yeni dosyalari ceker. */
 
-var SURUM = "maquas-takip-v7";
+var SURUM = "maquas-takip-v8";
 var KUTUPHANE = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.115.0/dist/umd/supabase.js";
 var DOSYALAR = [
   "/takip.html",
