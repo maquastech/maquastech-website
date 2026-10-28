@@ -2,7 +2,7 @@
    Uygulama dosyalarini onbellege alir, internet yokken de acilir.
    Surum numarasini degistirirsen tarayici yeni dosyalari ceker. */
 
-var SURUM = "maquas-takip-v9";
+var SURUM = "maquas-takip-v10";
 var KUTUPHANE = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.115.0/dist/umd/supabase.js";
 var DOSYALAR = [
   "/takip.html",
@@ -60,7 +60,7 @@ self.addEventListener("fetch", function (olay) {
 self.addEventListener("push", function (olay) {
   var y = {};
   try { y = olay.data ? olay.data.json() : {}; } catch (e) { y = { metin: olay.data ? olay.data.text() : "" }; }
-  olay.waitUntil(self.registration.showNotification(y.baslik || "Maquas İş Takip Sistemi", {
+  olay.waitUntil(self.registration.showNotification(y.baslik || "MAQUAS", {
     body: y.metin || "",
     icon: "/simge-192.png",
     badge: "/simge-192.png",
