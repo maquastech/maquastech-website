@@ -603,6 +603,11 @@ html[data-tema="koyu"] .mp-cip.sari{background:#3a2a06;color:#fcd34d}
 .mp-alt{font-size:12.5px;color:var(--gri3)}
 .mp-ilerleme{height:6px;border-radius:999px;background:var(--gri2);overflow:hidden}
 .mp-ilerleme i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--yesil),#34d399)}
+.mp-stok{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--gri1);border:1px solid var(--gri2);border-radius:10px;padding:7px 10px;font-size:13px}
+.mp-stok-e{color:var(--gri4);font-weight:600}
+.mp-stok b{font-size:14px}
+.mp-stok-bugun{margin-left:auto;font-size:11.5px;font-weight:700;color:var(--yesil);background:color-mix(in srgb,var(--yesil) 14%,transparent);padding:2px 8px;border-radius:999px}
+.mp-stok-son{margin-left:auto;font-size:11.5px;color:var(--gri3)}
 .mp-bilgi{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--gri4)}
 .mp-bos{background:var(--yuzey);border:1px dashed var(--gri2);border-radius:16px;padding:34px 18px;text-align:center;color:var(--gri4)}
 .mp-dip{text-align:center;font-size:12px;color:var(--gri3);margin:22px 0 0}
@@ -961,6 +966,10 @@ function malzemeSecHTML(f,kap){
 }
 
 /* ---- iş hesapları ---- */
+/* günlük üretim girişlerinden: üretilen toplam, teslim edilmeyi bekleyen hazır stok */
+function uretilen(is){ return veri.uretimler.filter(function(u){ return u.isId===is.id; }).reduce(function(t,u){ return t+sayi(u.adet); },0); }
+function hazirStok(is){ return Math.max(0, uretilen(is)-teslimEdilen(is)); }
+function gunlukUretimler(is){ var g={}; veri.uretimler.forEach(function(u){ if(u.isId===is.id && u.tarih) g[u.tarih]=(g[u.tarih]||0)+sayi(u.adet); }); return Object.keys(g).sort().reverse().map(function(k){ return {tarih:k,adet:g[k]}; }); }
 function teslimEdilen(is){ return is.teslimatlar.reduce(function(t,x){ return t+sayi(x.adet); },0); }
 function kalanAdet(is){ return Math.max(0, sayi(is.adet)-teslimEdilen(is)); }
 function birimMaliyet(is){ return sayi(is.malzemeUcreti)+is.ekMaliyetler.reduce(function(t,e){ return t+sayi(e.tutar); },0); }
@@ -1465,7 +1474,9 @@ function musteriIsFormHTML(){
         satir("Teslim tarihi", tarihYaz(f.teslimHedefi))+
         satir("Durum", durumYazi)+
         (te? satir("Teslim edilen", te+" / "+sayi(f.adet)+" adet") : "")+
+        (d!=="kapali"&&d!=="iptal"? satir("Hazır stok", hazirStok(f).toLocaleString("tr-TR")+" adet") : "")+
       '</div>'+
+      (function(){ var gl=gunlukUretimler(f); return gl.length? '<div class="bolum"><div class="bolum-baslik">Günlük üretim</div>'+gl.slice(0,14).map(function(x){ return '<div class="teslimat-satir"><span>'+tarihYaz(x.tarih)+'</span><span>'+x.adet.toLocaleString("tr-TR")+' adet</span></div>'; }).join("")+'</div>' : ''; })()+
       (f.teslimatlar.length?'<div class="bolum"><div class="bolum-baslik">Teslimatlar</div>'+
         f.teslimatlar.map(function(t,i){ return '<div class="teslimat-satir"><span><b>'+(i+1)+'. teslimat</b> · '+tarihYaz(t.tarih)+'</span><span>'+sayi(t.adet)+' adet</span></div>'; }).join("")+'</div>':'')+
     '</div><div class="modal-alt"><button class="btn btn-acik btn-tam" onclick="formKapat()">Kapat</button></div></div></div>';
@@ -2251,7 +2262,7 @@ function gorunumAyarHTML(){
 }
 function bildirimAyarHTML(){
   var izin=("Notification" in window)? Notification.permission : "yok";
-  var ne=musteriRol()? 'Siparişiniz açıldığında, kısmi ve tam teslimatlarda ve bayramlarda'
+  var ne=musteriRol()? 'Siparişiniz açıldığında, günlük üretim girildiğinde, kısmi ve tam teslimatlarda ve bayramlarda'
     : 'Teslim yaklaşınca ve gecikince (10:00), yeni iş emrinde, bakım/arıza kaydında'+(yonetici()?', vadeli ödemelerde, kayıt onayında':'')+' ve bayramlarda';
   var sag="", ek="";
   if(iosTarayicida()){ sag='<span class="ayar-sag">—</span>'; ek='<div class="ayar-not">iPhone\'da önce Safari\'de Paylaş → <b>Ana Ekrana Ekle</b> ile uygulamayı ekle, ana ekrandaki simgeden açıp buradan aç.</div>'; }
@@ -2663,6 +2674,8 @@ function mpKartHTML(is){
     (is.foto?'<img src="'+is.foto+'" alt="">':'<div class="mp-gorsel-yok">'+simge("stok")+'</div>')+
     '<div class="mp-govde"><div class="mp-ust"><div><div class="mp-kod">'+kacir(is.musteriKod||is.maquasKod||"Sipariş")+'</div><div class="mp-alt">'+kacir([is.musteriKod?is.maquasKod:"",is.malzemeCinsi].filter(Boolean).join(" · "))+'</div></div>'+cip+'</div>'+
       '<div class="mp-ilerleme"><i style="width:'+yz+'%"></i></div>'+
+      (d!=="kapali"&&d!=="iptal"? (function(){ var hs=hazirStok(is), gl=gunlukUretimler(is), bu=gl.length&&gl[0].tarih===bugun()? gl[0].adet : 0;
+        return '<div class="mp-stok"><span class="mp-stok-e">Hazır stok</span><b>'+hs.toLocaleString("tr-TR")+' adet</b>'+(bu?'<span class="mp-stok-bugun">Bugün +'+bu.toLocaleString("tr-TR")+'</span>':(gl.length?'<span class="mp-stok-son">Son giriş '+kisa(gl[0].tarih)+'</span>':''))+'</div>'; })() : '')+
       '<div class="mp-bilgi"><span><b>'+te.toLocaleString("tr-TR")+'</b> / '+ad.toLocaleString("tr-TR")+' adet teslim</span><span>'+(is.teslimHedefi?'Teslim <b>'+kisa(is.teslimHedefi)+'</b>'+(gun?' · '+gun:''):'')+'</span></div>'+
     '</div></button>';
 }
@@ -3048,6 +3061,7 @@ function verileriYukle(sessiz){
   if(yetki("stok")) al("stoklar","stoklar");
   if(yetki("makina")){ al("makinalar","makinalar"); al("bakimlar","bakimlar",function(s){ var v=s.veri; v.id=s.id; v._olusturan=s.olusturan; return v; }); }
   if(uretimYazabilir()) al("uretimler","uretimler",function(s){ var v=s.veri; v.id=s.id; v._olusturan=s.olusturan; return v; });
+  if(musteriRol()) istekler.push(sb.rpc("musteri_uretimleri").then(function(r){ if(!r.error) yeni.uretimler=(r.data||[]).map(function(x){ return {isId:x.is_id,tarih:x.tarih,adet:x.adet}; }); }));
   return Promise.all(istekler).then(function(){
     if(yeni._finans){
       var f={}; yeni._finans.forEach(function(s){ f[s.is_id]=s.veri; });
