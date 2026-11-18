@@ -183,6 +183,7 @@ main{max-width:1120px;margin:0 auto;padding:22px 16px 90px}
 .is-satir.iptal{opacity:.6}
 .is-ust{display:flex;justify-content:space-between;gap:12px}
 .is-kod{font-weight:700}
+.mq-ikincil{font-weight:600;font-size:12.5px;color:var(--gri3)}
 .is-alt{font-size:14px;color:var(--gri4)}
 .is-sag{text-align:right;white-space:nowrap}
 .is-adet{font-size:12px;color:var(--gri3)}
@@ -990,6 +991,9 @@ function malzemeSecHTML(f,kap){
 function uretilen(is){ return veri.uretimler.filter(function(u){ return u.isId===is.id; }).reduce(function(t,u){ return t+sayi(u.adet); },0); }
 function hazirStok(is){ return Math.max(0, uretilen(is)-teslimEdilen(is)); }
 function gunlukUretimler(is){ var g={}; veri.uretimler.forEach(function(u){ if(u.isId===is.id && u.tarih) g[u.tarih]=(g[u.tarih]||0)+sayi(u.adet); }); return Object.keys(g).sort().reverse().map(function(k){ return {tarih:k,adet:g[k]}; }); }
+/* iş kodu + müşterinin kendi malzeme kodu (müşteri girişinde önce müşteri kodu) */
+function kodHTML(is){ return kacir(is.maquasKod||"Kodsuz"); }
+function malzemeKoduSatiri(is){ var mk=String(is.musteriKod||"").trim(); return mk? '<div class="zaman"><span>Malzeme kodu: <b>'+kacir(mk)+'</b></span></div>' : ''; }
 function teslimEdilen(is){ return is.teslimatlar.reduce(function(t,x){ return t+sayi(x.adet); },0); }
 function kalanAdet(is){ return Math.max(0, sayi(is.adet)-teslimEdilen(is)); }
 function birimMaliyet(is){ return sayi(is.malzemeUcreti)+is.ekMaliyetler.reduce(function(t,e){ return t+sayi(e.tutar); },0); }
@@ -1315,9 +1319,9 @@ function isSatirHTML(is){
   if(d==="kapali") sag='<div class="is-gun yesil">Kapandı</div>';
   else if(d==="iptal") sag='<div class="is-gun gri">İptal</div>';
   else if(k!==null) sag='<div class="is-gun '+(k<0?"kirmizi":k<=3?"sari":"")+'">'+(k<0?Math.abs(k)+" gün geçti":k===0?"Bugün teslim":k+" gün kaldı")+'</div>';
-  var alt = yonetici()? (musteriAdi(is.musteriId)||"Müşteri girilmedi") : musteriRol()? (is.musteriKod||is.malzemeCinsi||"") : [musteriAdi(is.musteriId),is.malzemeCinsi].filter(Boolean).join(" · ");
+  var alt = yonetici()? (musteriAdi(is.musteriId)||"Müşteri girilmedi") : musteriRol()? (is.malzemeCinsi||"") : [musteriAdi(is.musteriId),is.malzemeCinsi].filter(Boolean).join(" · ");
   var sure = (is.siparisTarihi&&is.teslimHedefi)? gunFarki(is.siparisTarihi,is.teslimHedefi) : null;
-  var z='<div class="zaman"><span>Sipariş: <b>'+kisa(is.siparisTarihi)+'</b></span><span>Teslim günü: <b>'+kisa(is.teslimHedefi)+'</b></span>'+(sure!==null?'<span>Süre: <b>'+sure+' gün</b></span>':'')+
+  var z='<div class="zaman">'+(String(is.musteriKod||"").trim()?'<span>Malzeme kodu: <b>'+kacir(is.musteriKod)+'</b></span>':'')+'<span>Sipariş: <b>'+kisa(is.siparisTarihi)+'</b></span><span>Teslim günü: <b>'+kisa(is.teslimHedefi)+'</b></span>'+(sure!==null?'<span>Süre: <b>'+sure+' gün</b></span>':'')+
     (is.ilkTermin && is.ilkTermin!==is.teslimHedefi?'<span>İlk termin: <b>'+kisa(is.ilkTermin)+'</b></span>':'')+'</div>';
   var dy="";
   if(is.teslimatlar.length){
@@ -1333,7 +1337,7 @@ function isSatirHTML(is){
     var ur=uretilen(is);
     if(mkAd.length || (ur && is.durum==="acik")) dy+='<div class="durum-yazi mk-rozet">'+(mkAd.length?'⚒ '+kacir(mkAd.join(", ")):'')+(ur&&is.durum==="acik"?(mkAd.length?' · ':'')+'Üretilen '+ur.toLocaleString("tr-TR")+' / '+ad.toLocaleString("tr-TR"):'')+'</div>';
   }
-  return '<button class="is-satir '+d+'" onclick="isAc(\''+is.id+'\')"><div class="is-ust"><div><div class="is-kod">'+kacir(is.maquasKod||"Kodsuz")+'</div><div class="is-alt">'+kacir(alt)+'</div></div>'+
+  return '<button class="is-satir '+d+'" onclick="isAc(\''+is.id+'\')"><div class="is-ust"><div><div class="is-kod">'+kodHTML(is)+'</div><div class="is-alt">'+kacir(alt)+'</div></div>'+
     '<div class="is-sag"><div class="is-adet">'+(ad?ad.toLocaleString("tr-TR")+" adet":"")+'</div>'+sag+'</div></div>'+z+dy+f+'</button>';
 }
 
@@ -1484,14 +1488,14 @@ function musteriIsFormHTML(){
     : k===null? "Devam ediyor" : k<0? Math.abs(k)+" gün gecikme" : k===0? "Bugün teslim edilecek" : k+" gün kaldı";
   var satir=function(e,v){ return '<div class="mb-satir"><span>'+e+'</span><b>'+v+'</b></div>'; };
   return '<div class="perde" onclick="if(event.target===this)formKapat()"><div class="modal">'+
-    '<div class="modal-ust"><h3>'+kacir(f.maquasKod||"Sipariş")+'</h3><button class="kapat" onclick="formKapat()" aria-label="Kapat">&times;</button></div>'+
+    '<div class="modal-ust"><h3>'+kacir(f.musteriKod||f.maquasKod||"Sipariş")+(f.musteriKod&&f.maquasKod?' <span class="mq-ikincil">'+kacir(f.maquasKod)+'</span>':'')+'</h3><button class="kapat" onclick="formKapat()" aria-label="Kapat">&times;</button></div>'+
     (d==="kapali"?'<div class="durum-banner kapali">Sipariş tamamlandı</div>':'')+
     (d==="iptal"?'<div class="durum-banner iptal">Sipariş iptal edildi</div>':'')+
     '<div class="modal-ic">'+
       (f.foto?'<img class="mb-foto" src="'+f.foto+'" alt="Parça fotoğrafı" onclick="fotoGoster([this.src],0)">':'')+
       '<div class="mb-liste">'+
-        satir("Parça kodu", kacir(f.maquasKod||"—"))+
-        (f.musteriKod? satir("Sizin parça kodunuz", kacir(f.musteriKod)) : "")+
+        (f.musteriKod? satir("Malzeme kodunuz", kacir(f.musteriKod)) : "")+
+        satir("MAQUAS parça kodu", kacir(f.maquasKod||"—"))+
         satir("Adet", sayi(f.adet))+
         satir("Sipariş tarihi", tarihYaz(f.siparisTarihi))+
         satir("Teslim tarihi", tarihYaz(f.teslimHedefi))+
@@ -1550,7 +1554,7 @@ function isFormHTML(){
       '<div class="ikili">'+girdi("siparisTarihi","Sipariş tarihi",f.siparisTarihi,{tarih:1,kapali:kap})+girdi("teslimHedefi","Teslim tarihi",f.teslimHedefi,{tarih:1,kapali:kap})+'</div>'+
       '<div id="hedef-blok">'+hedefBlok(f)+'</div>'+
       musteriSecHTML(f,kap,adm)+kartSec+
-      '<div class="ikili">'+girdi("musteriKod","Müşteri parça kodu",f.musteriKod,{kapali:kap})+
+      '<div class="ikili">'+girdi("musteriKod","Müşteri malzeme kodu",f.musteriKod,{kapali:kap})+
         girdi("maquasKod","MAQUAS parça kodu",f.maquasKod,{kapali:kap,ipucu:yeni?"Müşteri seçilince sıradaki kod otomatik gelir":""})+'</div>'+
       malzemeSecHTML(f,kap)+
       fotoHTML(f,kap)+belgelerHTML(f,kap)+
@@ -1626,7 +1630,7 @@ function kartFormHTML(){
   return '<div class="perde" onclick="if(event.target===this)formKapat()"><div class="modal"><div class="modal-ust"><h3>'+(yeni?"Yeni parça kartı":"Parça kartı · "+kacir(f.maquasKod||f.ad))+'</h3><button class="kapat" onclick="formKapat()" aria-label="Kapat">&times;</button></div>'+
     '<div class="modal-ic">'+mlist+
       musteriSecHTML(f,false,true)+
-      '<div class="ikili">'+girdi("ad","Parça adı",f.ad)+girdi("musteriKod","Müşteri parça kodu",f.musteriKod)+
+      '<div class="ikili">'+girdi("ad","Parça adı",f.ad)+girdi("musteriKod","Müşteri malzeme kodu",f.musteriKod)+
       girdi("maquasKod","MAQUAS parça kodu",f.maquasKod,{ipucu:yeni?"Müşteri seçilince sıradaki kod otomatik gelir":""})+girdi("olcu","Ölçü",f.olcu,{yer:"Örn. Ø12 x 45 mm"})+'</div>'+
       malzemeSecHTML(f,false)+
       '<div><label for="a-operasyon">Operasyonlar</label><textarea id="a-operasyon" data-k="operasyon" rows="3" oninput="alanYaz(this)" placeholder="Örn. torna, frezeleme, diş çekme, kaplama">'+kacir(f.operasyon)+'</textarea></div>'+
@@ -1917,7 +1921,7 @@ function imalatAkisiHTML(mid){
       var digerler=isMakinalari(is).filter(function(p){ return p.id!==mid; }).map(function(p){ return makinaAdi(p.id); }).filter(Boolean);
       var rozet = d==="kapali"?'<span class="is-gun yesil">Kapandı</span>': d==="iptal"?'<span class="is-gun gri">İptal</span>': k===null?'': '<span class="is-gun '+(k<0?"kirmizi":k<=3?"sari":"")+'">'+(k<0?Math.abs(k)+" gün geçti":k===0?"Bugün teslim":k+" gün kaldı")+'</span>';
       return '<button class="is-satir '+d+' imalat-satir" onclick="isAc(\''+is.id+'\')">'+
-        '<div class="is-ust"><div><div class="is-kod">'+kacir(is.maquasKod||"Kodsuz")+'</div><div class="is-alt">'+kacir(yonetici()?(musteriAdi(is.musteriId)||""):(is.malzemeCinsi||""))+'</div></div>'+
+        '<div class="is-ust"><div><div class="is-kod">'+kodHTML(is)+'</div><div class="is-alt">'+kacir(yonetici()?(musteriAdi(is.musteriId)||""):(is.malzemeCinsi||""))+'</div>'+malzemeKoduSatiri(is)+'</div>'+
           '<div class="is-sag"><div class="is-adet">'+sayi(is.adet).toLocaleString("tr-TR")+' adet</div>'+rozet+'</div></div>'+
         '<div class="mk-aralik"><b>'+kisa(r.bas)+'</b> → <b>'+kisa(r.bit)+'</b>'+(r.tahmini?' <span style="color:#a8a29e">(sipariş → teslim)</span>':'')+'</div>'+
         '<div class="mk-bilgi">'+
@@ -2753,7 +2757,7 @@ function teklifFormHTML(){
       '<div><label for="a-musteri">Müşteri adı</label><input id="a-musteri" data-k="musteri" list="tk-musteriler" autocomplete="off" placeholder="Firma adını yaz" value="'+kacir(teklifMusteri(f))+'" oninput="alanYaz(this)"'+(kap?" disabled":"")+'>'+
         '<datalist id="tk-musteriler">'+canli(veri.musteriler).filter(function(m){ return m.tur!=="tedarikci"; }).map(function(m){ return '<option value="'+kacir(m.ad)+'">'; }).join("")+'</datalist>'+
         '<div class="ipucu">Kayıtlı olmayan bir firma da yazabilirsin; teklif onaylanınca iş emrinde müşteri kartı açılır.</div></div>'+
-      '<div class="ikili">'+girdi("musteriKod","Müşteri parça kodu",f.musteriKod,{kapali:kap})+
+      '<div class="ikili">'+girdi("musteriKod","Müşteri malzeme kodu",f.musteriKod,{kapali:kap})+
         girdi("maquasKod","MAQUAS parça kodu",f.maquasKod,{kapali:kap,ipucu:yeni?"Boş bırakılabilir; iş emrine dönüşünce otomatik verilir":""})+'</div>'+
       malzemeSecHTML(f,kap)+
       girdi("adet","Sipariş adedi",f.adet,{sayi:1,kapali:kap})+
